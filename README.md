@@ -6,7 +6,7 @@ Minimal API for the ACRD [Public](https://github.com/bcgov/nrts-prc-public) and 
  
 Start the server by running `npm start`
 
-Check the swagger-ui on `http://localhost:3000/docs`
+Check the swagger-ui on `http://localhost:3000/api/docs`
 
 1) POST `http://localhost:3000/api/login/token` with the following body
 ``
