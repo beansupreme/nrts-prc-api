@@ -34,6 +34,7 @@
   "scripts": {
     "start": "node app",
     "test": "jest api",
+    "test:debug": "node --inspect node_modules/.bin/jest --runInBand",
     "coverage": "jest --collectCoverageFrom=api/**.js --coverage api"
   },
   "devDependencies": {
