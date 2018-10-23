@@ -1,11 +1,10 @@
 const actions   = require('./actions');
 const Organization = require('./models/organization');
-let publishedOrg = new Organization({tags: ['public']});
-let newOrg = new Organization({tags: []});
 
 describe('#publish', () => {
     describe('with an object that has already been published', () => {
         test('it returns 409 with a status message', done => {
+            let publishedOrg = new Organization({tags: ['public']});
             actions.publish(publishedOrg)
             .catch(error => {
                 expect(error.code).toEqual(409);
@@ -17,6 +16,7 @@ describe('#publish', () => {
 
     describe('with an object that has not been published', () => {
         test('it adds the public tag and saves it', () => {
+            let newOrg = new Organization({tags: []});
             actions.publish(newOrg);
             expect(newOrg.tags[0]).toEqual(expect.arrayContaining(['public']));
         });
@@ -50,6 +50,7 @@ describe('#isPublished', () => {
 describe('#unpublish', () => {
     describe('with an object that has been published', () => {
         test('it removes the public tag and saves it', () => {
+            let publishedOrg = new Organization({tags: ['public']});
             actions.unPublish(publishedOrg)
             expect(publishedOrg.tags).toHaveLength(0)
         });
@@ -57,6 +58,7 @@ describe('#unpublish', () => {
 
     describe('with an object that is unpublished', () => {
         test('it returns 409 with a status message', done => {
+            let newOrg = new Organization({tags: []});
             actions.unPublish(newOrg)
             .catch(error => {
                 expect(error.code).toEqual(409);
@@ -69,11 +71,13 @@ describe('#unpublish', () => {
 
 describe('#delete', () => {
     test('it removes the public tag', () => {
+        let publishedOrg = new Organization({tags: ['public']});
         actions.delete(publishedOrg);
         expect(publishedOrg.tags).toHaveLength(0);
     })
 
     test('it soft-deletes the object', () => {
+        let newOrg = new Organization({tags: []});
         actions.delete(newOrg);
         expect(newOrg.isDeleted).toEqual(true);
     });
