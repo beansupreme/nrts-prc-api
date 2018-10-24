@@ -3,7 +3,10 @@ const mongoose = require('mongoose');
 const request = require('supertest');
 const express = require('express');
 const app = express();
+
+var bodyParser = require('body-parser');
 const userController = require('../controllers/user.js');
+
 const _ = require('lodash');
 require('../helpers/models/user');
 var User = mongoose.model('User');
@@ -19,6 +22,11 @@ const swaggerParams = {
     }
 }
 
+app.use(bodyParser.urlencoded({
+    extended: true
+}));
+app.use(bodyParser.json());
+
 app.get('/api/user', function(req, res) {
     return userController.protectedGet(swaggerParams, res);
 });
@@ -28,6 +36,14 @@ app.get('/api/user/:id', function(req, res) {
         value: req.params.id
     }
     return userController.protectedGet(swaggerWithExtraParams, res);
+});
+
+app.post('/api/user', function(req, res) {
+    let swaggerWithExtraParams = _.clone(swaggerParams);
+    swaggerWithExtraParams['swagger']['params'].user = {
+        value: req.body
+    }
+    return userController.protectedPost(swaggerParams, res);
 });
   
 
@@ -85,5 +101,31 @@ describe('GET /User/{id}', () => {
             });
             done()
         });
+    });
+});
+
+describe('POST /user', () => {
+    test('creates a new user', done => {
+        let userObject = {
+            displayName: 'Lisa Helps',
+            firstName: 'Lisa',
+            lastName: 'Helps',
+            username: 'lisahelps',
+            password: 'Need_more_bike_lanes123'
+        }
+        request(app).post('/api/user', userObject)
+        .send(userObject)
+        .expect(200).then(response => {
+            expect(response.body).toHaveProperty('_id');
+            User.findOne({username: 'lisahelps'}).exec(function(error, user) {
+                expect(user).toBeDefined();
+                expect(user.firstName).toBe('Lisa');
+                done();
+            });
+            
+        });
+    });
+
+    test.skip('requires a username and password', done => {
     });
 });
