@@ -31,7 +31,7 @@ app.get('/api/user', function(req, res) {
     return userController.protectedGet(swaggerParams, res);
 });
 app.get('/api/user/:id', function(req, res) { 
-    let swaggerWithExtraParams = _.clone(swaggerParams);
+    let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
     swaggerWithExtraParams['swagger']['params'].userId = {
         value: req.params.id
     }
@@ -39,11 +39,11 @@ app.get('/api/user/:id', function(req, res) {
 });
 
 app.post('/api/user', function(req, res) {
-    let swaggerWithExtraParams = _.clone(swaggerParams);
+    let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
     swaggerWithExtraParams['swagger']['params'].user = {
         value: req.body
     }
-    return userController.protectedPost(swaggerParams, res);
+    return userController.protectedPost(swaggerWithExtraParams, res);
 });
   
 
