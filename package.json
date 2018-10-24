@@ -38,6 +38,7 @@
     "coverage": "jest --collectCoverageFrom=api/**.js --coverage api"
   },
   "devDependencies": {
-    "jest": "^23.6.0"
+    "jest": "^23.6.0",
+    "supertest": "^3.3.0"
   }
 }
