@@ -1,8 +1,5 @@
-var dbConnection  = 'mongodb://'
-                    + 'localhost'
-                    + '/'
-                    + 'nrts-test';
-var options = {
+const dbConnection  = 'mongodb://localhost/nrts-test';
+const options = {
     useMongoClient: true,
     poolSize: 10,
     reconnectTries: Number.MAX_VALUE, // Never stop trying to reconnect

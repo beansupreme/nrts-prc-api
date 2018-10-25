@@ -74,7 +74,7 @@ describe('#delete', () => {
         let publishedOrg = new Organization({tags: ['public']});
         actions.delete(publishedOrg);
         expect(publishedOrg.tags).toHaveLength(0);
-    })
+    });
 
     test('it soft-deletes the object', () => {
         let newOrg = new Organization({tags: []});
