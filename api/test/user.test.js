@@ -3,8 +3,6 @@ const mongoose = require('mongoose');
 const request = require('supertest');
 const express = require('express');
 const app = express();
-const DatabaseCleaner = require('database-cleaner');
-var dbCleaner = new DatabaseCleaner('mongodb');
 
 var bodyParser = require('body-parser');
 const userController = require('../controllers/user.js');
@@ -58,63 +56,78 @@ app.put('/api/user/:id', function(req, res) {
     };
     return userController.protectedPut(swaggerWithExtraParams, res);
 });
+
+function setupUsers(users) {
+    return new Promise(function(resolve, reject) {
+        User.collection.insert(users, function(error, documents) {
+            if (error) { 
+                console.log('*********ERROR *********')
+                console.log(error)
+                reject(error); 
+            }
+            else {
+                resolve(documents) 
+            }
+        });
+    });
+}
+
+const usersArray = [
+    {
+        username: 'admin1', password: 'v3rys3cr3t', roles: ['sysadmin', 'public']
+    },
+    {
+        username: 'joeschmo1', password: 'n0ts3cr3t', roles: ['public']
+    }
+]
   
 
 describe('GET /User', () => {
     test('returns a list of users', done => {
-        let adminUser = User.create({
-            username: 'admin', password: 'v3rys3cr3t', roles: ['sysadmin', 'public']
-        });
-        let publicUser = User.create({
-            username: 'joeschmo', password: 'n0ts3cr3t', roles: ['public']
-        });
-        
-        request(app).get('/api/user').expect(200).then(response =>{
-            expect(response.body.length).toEqual(2);
-
-            let firstUser = response.body[0];
-            expect(firstUser).toHaveProperty('_id');
-            expect(firstUser['roles']).toEqual(expect.arrayContaining(["sysadmin","public"]));
-
-            let secondUser = response.body[1];
-            expect(secondUser).toHaveProperty('_id');
-            expect(secondUser['roles']).toEqual(expect.arrayContaining(["public"]));
-            done()
-        });
-        
-    });
-
-    test('returns an empty array when there are no users', done => {
-        dbCleaner.clean(mongoose.connection.db, () => { 
-            request(app).get('/api/user').expect(200).then(response => {
-                expect(response.body.length).toBe(0);
-                expect(response.body).toEqual([]);
-                done();
+        setupUsers(usersArray)
+        .then((users) => {
+            request(app).get('/api/user').expect(200).then(response =>{
+                expect(response.body.length).toEqual(2);
+    
+                let firstUser = response.body[0];
+                expect(firstUser).toHaveProperty('_id');
+                expect(firstUser['roles']).toEqual(expect.arrayContaining(["sysadmin","public"]));
+    
+                let secondUser = response.body[1];
+                expect(secondUser).toHaveProperty('_id');
+                expect(secondUser['roles']).toEqual(expect.arrayContaining(["public"]));
+                done()
             });
         });
     });
+
+    test('returns an empty array when there are no users', done => {
+        request(app).get('/api/user').expect(200).then(response => {
+            expect(response.body.length).toBe(0);
+            expect(response.body).toEqual([]);
+            done();
+        });
+    });
+    
 });
 
 describe('GET /User/{id}', () => {
     test('returns a single user', done => {
-        let adminUser = new User({
-            username: 'admin1', password: 'v3rys3cr3t', roles: ['sysadmin', 'public']
-        });
-        let publicUser = new User({
-            username: 'joeschmo1', password: 'n0ts3cr3t', roles: ['public']
-        });
-        adminUser.save(error => { if (error) { console.log(error) } });
-        publicUser.save(error => { if (error) { console.log(error) } });
-        let publicUserId = publicUser._id.toString();;
-        let uri = '/api/user/' + publicUserId;
-        request(app).get(uri).expect(200).then(response => {
-            expect(response.body.length).toBe(1);
-            let publicUserData = response.body[0];
-            expect(publicUserData).toMatchObject({
-                '_id': publicUserId,
-                'roles': expect.arrayContaining(['public'])
+        setupUsers(usersArray)
+        .then((users) => {
+            User.findOne({username: 'admin1'}).exec(function(error, user) {
+                let publicUserId = user._id.toString();;
+                let uri = '/api/user/' + publicUserId;
+                request(app).get(uri).expect(200).then(response => {
+                    expect(response.body.length).toBe(1);
+                    let publicUserData = response.body[0];
+                    expect(publicUserData).toMatchObject({
+                        '_id': publicUserId,
+                        'roles': expect.arrayContaining(['public'])
+                    });
+                    done();
+                });
             });
-            done();
         });
     });
 });
@@ -166,23 +179,31 @@ describe('POST /user', () => {
 });
 
 describe('PUT /user/:id', () => {
-    let cookieUser = new User({
-        displayName: 'Cookie Monster',
-        firstName: 'Cookie',
-        lastName: 'Monster',
-        username: 'the_cookie_monster',
-        password: 'I_am_so_quirky',
-        roles: []
-    });
+    let cookieUser;
+
+    function setupUser() {
+        cookieUser = new User({
+            displayName: 'Cookie Monster',
+            firstName: 'Cookie',
+            lastName: 'Monster',
+            username: 'the_cookie_monster',
+            password: 'I_am_so_quirky',
+            roles: []
+        });
+
+        return new Promise(function(resolve, reject) {
+            cookieUser.save(function(error, user) {
+                if (error) { 
+                    reject(error);
+                } else {
+                    resolve();
+                }
+            });
+        });
+    }
 
     beforeEach(done => {
-        cookieUser.save(function(error, user) {
-            if (error) { 
-                throw error ;
-            } else {
-                done();
-            }
-        });
+        setupUser().then(done());
     });
 
     test('updates a user', done => {
