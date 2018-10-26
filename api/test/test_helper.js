@@ -16,11 +16,7 @@ const options = {
 const mongoose = require('mongoose');
 
 beforeAll(() => {
-    mongoose.connect(dbConnection, options).then(
-        () => {
-            require('./api/helpers/models/user');
-        }
-    );
+    mongoose.connect(dbConnection, options);
 });
 
 afterAll(function(done){
@@ -29,6 +25,6 @@ afterAll(function(done){
     });
 });
 
-// afterEach(done => {
-//     dbCleaner.clean(mongoose.connection.db, () => { done() });
-// });
+afterEach(done => {
+    dbCleaner.clean(mongoose.connection.db, () => { done() });
+});
