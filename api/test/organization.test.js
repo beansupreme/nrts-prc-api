@@ -11,18 +11,41 @@ const organizationController = require('../controllers/organization.js');
 
 const _ = require('lodash');
 require('../helpers/models/organization');
+require('../helpers/models/user');
 var Organization = mongoose.model('Organization');
+var User = mongoose.model('User');
 
-const swaggerParams = {
+let swaggerParams = {
     swagger: {
         params:{
             auth_payload:{
-                scopes: [ 'sysadmin', 'public' ]
+                scopes: [ 'sysadmin', 'public' ],
+                userID: null
             },
             fields: {}
         }
     }
 };
+let authUser = new User({
+    displayName: 'Api User',
+    firstName: 'Api',
+    lastName: 'User',
+    username: 'api_consumer',
+    password: 'V3ryS3cr3tPass',
+});
+function setupUser() {
+    return new Promise(function(resolve, reject) {
+        authUser.save(function(error, user) {
+            if (error) { 
+                reject(error);
+            } else {
+                swaggerParams['swagger']['params']['auth_payload']['userID'] = user._id
+                userID = user._id;
+                resolve();
+            }
+        });
+    });
+}
 
 app.use(bodyParser.urlencoded({
     extended: true
@@ -39,6 +62,41 @@ app.get('/api/organization/:id', function(req, res) {
         value: req.params.id
     };
     return organizationController.protectedGet(swaggerWithExtraParams, res);
+});
+
+app.post('/api/organization', function(req, res) {
+    let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
+    swaggerWithExtraParams['swagger']['params']['org'] = {
+        value: req.body
+    };
+    return organizationController.protectedPost(swaggerWithExtraParams, res);
+});
+
+app.put('/api/organization/:id', function(req, res) {
+    let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
+    swaggerWithExtraParams['swagger']['params']['orgId'] = {
+        value: req.params.id
+    };
+    swaggerWithExtraParams['swagger']['params']['org'] = {
+        value: req.body
+    };
+    return organizationController.protectedPut(swaggerWithExtraParams, res);
+});
+
+app.put('/api/organization/:id/publish', function(req, res) {
+    let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
+    swaggerWithExtraParams['swagger']['params']['orgId'] = {
+        value: req.params.id
+    };
+    return organizationController.protectedPublish(swaggerWithExtraParams, res);
+});
+
+app.put('/api/organization/:id/unpublish', function(req, res) {
+    let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
+    swaggerWithExtraParams['swagger']['params']['orgId'] = {
+        value: req.params.id
+    };
+    return organizationController.protectedUnPublish(swaggerWithExtraParams, res);
 });
 
 function setupOrganizations(organizations) {
@@ -109,6 +167,147 @@ describe('GET /organization/{id}', () => {
                     done();
                 });
             });;
+        });
+    });
+});
+
+describe('POST /organization', () => {
+    beforeEach(done => {
+        setupUser().then(done());
+    });
+    
+    test('creates a new organization', done => {
+        let orgObject = {
+            name: 'Victoria',
+            code: 'victoria'
+        };
+        request(app).post('/api/organization', orgObject)
+        .send(orgObject)
+        .expect(200).then(response => {
+            expect(response.body).toHaveProperty('_id');
+            Organization.findOne({code: 'victoria'}).exec(function(error, organization) {
+                expect(organization).toBeDefined();
+                expect(organization.name).toBe('Victoria');
+                done();
+            });
+        });
+    });
+    
+    test('it sets the _addedBy to the api user', done => {
+        let orgObject = {
+            name: 'Victoria',
+            code: 'victoria'
+        };
+        request(app).post('/api/organization', orgObject)
+        .send(orgObject)
+        .expect(200).then(response => {
+            expect(response.body).toHaveProperty('_id');
+            Organization.findOne({code: 'victoria'}).exec(function(error, organization) {
+                expect(organization._addedBy).toEqual(userID);
+                done();
+            });
+        });
+    });
+});
+
+describe('PUT /organization/:id', () => {
+    test('updates an organization', done => {
+        let existingOrg = new Organization({
+            code: 'EXISTING',
+            name: 'Boring Org'
+        });
+        let updateData = {
+            name: 'Exciting Org'
+        };
+        existingOrg.save().then(organization => {
+            let uri = '/api/organization/' + organization._id;
+            request(app).put(uri, updateData)
+            .send(updateData)
+            .then(response => {
+                // expect(response.body.name).toBe('Exciting Org');
+                Organization.findOne({displayName: 'Exciting Org'}).exec(function(error, org) {
+                    expect(org).toBeDefined();
+                    done();
+                });
+            });
+        });
+    });
+
+    test('404s if the organization does not exist', done => {
+        let uri = '/api/organization/' + 'NON_EXISTENT_ID';
+        request(app).put(uri)
+        .send({name: 'hacker_man'})
+        .expect(404)
+        .then(response => {
+            done();
+        });
+    });
+});
+
+
+describe('PUT /organization/:id/publish', () => {
+    test('publishes an organization', done => {
+        let existingOrg = new Organization({
+            code: 'EXISTING',
+            name: 'Boring Org',
+            tags: []
+        });
+        existingOrg.save().then(organization => {
+            let uri = '/api/organization/' + organization._id + '/publish';
+            request(app).put(uri)
+            .expect(200)
+            .send({})
+            .then(response => {
+                Organization.findOne({code: 'EXISTING'}).exec(function(error, org) {
+                    expect(org).toBeDefined();
+                    expect(org.tags[0]).toEqual(expect.arrayContaining(['public']));
+                    done();
+                });
+            });
+        })
+        
+    });
+
+    test('404s if the organization does not exist', done => {
+        let uri = '/api/organization/' + 'NON_EXISTENT_ID' + '/publish';
+        request(app).put(uri)
+        .send({})
+        .expect(404)
+        .then(response => {
+            done();
+        });
+    });
+});
+
+describe('PUT /organization/:id/unpublish', () => {
+    test('unpublishes an organization', done => {
+        let existingOrg = new Organization({
+            code: 'EXISTING',
+            name: 'Boring Org',
+            tags: [['public']]
+        });
+        existingOrg.save().then(organization => {
+            let uri = '/api/organization/' + organization._id + '/unpublish';
+            request(app).put(uri)
+            .expect(200)
+            .send({})
+            .then(response => {
+                Organization.findOne({code: 'EXISTING'}).exec(function(error, org) {
+                    expect(org).toBeDefined();
+                    expect(org.tags[0]).toEqual(expect.arrayContaining([]));
+                    done();
+                });
+            });
+        });
+    });
+
+    test('404s if the organization does not exist', done => {
+        let uri = '/api/organization/' + 'NON_EXISTENT_ID' + '/unpublish';
+        request(app).put(uri)
+        .send({})
+        .expect(404)
+        .then(response => {
+            done();
         });
     });
 });
