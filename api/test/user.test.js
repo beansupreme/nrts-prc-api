@@ -1,10 +1,7 @@
-require('./test_helper');
+const test_helper = require('./test_helper');
+const app = test_helper.app;
 const mongoose = require('mongoose');
 const request = require('supertest');
-const express = require('express');
-const app = express();
-
-var bodyParser = require('body-parser');
 const userController = require('../controllers/user.js');
 
 const _ = require('lodash');
@@ -21,11 +18,6 @@ const swaggerParams = {
         }
     }
 };
-
-app.use(bodyParser.urlencoded({
-    extended: true
-}));
-app.use(bodyParser.json());
 
 app.get('/api/user', function(req, res) {
     return userController.protectedGet(swaggerParams, res);

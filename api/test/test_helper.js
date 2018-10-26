@@ -1,3 +1,15 @@
+const express = require('express');
+const app = express();
+
+var bodyParser = require('body-parser');
+
+
+app.use(bodyParser.urlencoded({
+    extended: true
+}));
+app.use(bodyParser.json());
+
+
 const DatabaseCleaner = require('database-cleaner');
 var dbCleaner = new DatabaseCleaner('mongodb');
 const dbConnection  = 'mongodb://localhost/nrts-test';
@@ -28,3 +40,5 @@ afterAll(function(done){
 afterEach(done => {
     dbCleaner.clean(mongoose.connection.db, () => { done() });
 });
+
+exports.app = app;
