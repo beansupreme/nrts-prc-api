@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const request = require('supertest');
 const express = require('express');
 const app = express();
+const DatabaseCleaner = require('database-cleaner');
+var dbCleaner = new DatabaseCleaner('mongodb');
 
 var bodyParser = require('body-parser');
 const userController = require('../controllers/user.js');
@@ -20,7 +22,7 @@ const swaggerParams = {
             fields: {}
         }
     }
-}
+};
 
 app.use(bodyParser.urlencoded({
     extended: true
@@ -59,7 +61,7 @@ app.put('/api/user/:id', function(req, res) {
   
 
 describe('GET /User', () => {
-    test.skip('returns a list of users', done => {
+    test('returns a list of users', done => {
         let adminUser = User.create({
             username: 'admin', password: 'v3rys3cr3t', roles: ['sysadmin', 'public']
         });
@@ -82,17 +84,19 @@ describe('GET /User', () => {
         
     });
 
-    test.skip('returns an empty array when there are no users', done => {
-        request(app).get('/api/user').expect(200).then(response => {
-            expect(response.body.length).toBe(0);
-            expect(response.body).toEqual([]);
-            done();
+    test('returns an empty array when there are no users', done => {
+        dbCleaner.clean(mongoose.connection.db, () => { 
+            request(app).get('/api/user').expect(200).then(response => {
+                expect(response.body.length).toBe(0);
+                expect(response.body).toEqual([]);
+                done();
+            });
         });
     });
 });
 
 describe('GET /User/{id}', () => {
-    test.skip('returns a single user', done => {
+    test('returns a single user', done => {
         let adminUser = new User({
             username: 'admin1', password: 'v3rys3cr3t', roles: ['sysadmin', 'public']
         });
@@ -108,9 +112,7 @@ describe('GET /User/{id}', () => {
             let publicUserData = response.body[0];
             expect(publicUserData).toMatchObject({
                 '_id': publicUserId,
-                'roles': expect.arrayContaining(['public']),
-                'displayName': 'joeschmo1',
-                'tags': ['public']
+                'roles': expect.arrayContaining(['public'])
             });
             done();
         });
@@ -172,6 +174,7 @@ describe('PUT /user/:id', () => {
         password: 'I_am_so_quirky',
         roles: []
     });
+
     beforeEach(done => {
         cookieUser.save(function(error, user) {
             if (error) { 
@@ -206,6 +209,7 @@ describe('PUT /user/:id', () => {
         let uri = '/api/user/' + cookieUser._id;
         request(app).put(uri)
         .send(updateData)
+        .expect(200)
         .then(response => {
             expect(response.body.username).toBe('the_cookie_monster');
             User.findOne({username: 'the_carrot_monster'}).exec(function(error, user) {

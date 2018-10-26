@@ -1,3 +1,5 @@
+const DatabaseCleaner = require('database-cleaner');
+var dbCleaner = new DatabaseCleaner('mongodb');
 const dbConnection  = 'mongodb://localhost/nrts-test';
 const options = {
     useMongoClient: true,
@@ -26,3 +28,7 @@ afterAll(function(done){
       mongoose.connection.close(done);
     });
 });
+
+// afterEach(done => {
+//     dbCleaner.clean(mongoose.connection.db, () => { done() });
+// });
