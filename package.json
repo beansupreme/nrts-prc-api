@@ -46,8 +46,9 @@
     "coverage": "jest --collectCoverageFrom=api/**.js --coverage api"
   },
   "devDependencies": {
+    "database-cleaner": "^1.2.0",
     "jest": "^23.6.0",
-    "supertest": "^3.3.0",
-    "database-cleaner": "^1.2.0"
+    "mongodb-memory-server": "^2.6.2",
+    "supertest": "^3.3.0"
   }
 }

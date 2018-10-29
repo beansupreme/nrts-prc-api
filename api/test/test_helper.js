@@ -1,44 +1,55 @@
 const express = require('express');
+const bodyParser = require('body-parser');
+const DatabaseCleaner = require('database-cleaner');
+const dbCleaner = new DatabaseCleaner('mongodb');
+const mongoose = require('mongoose');
+const mongooseOpts = require('../../config/mongoose_options');
+const mongoDbMemoryServer = require('mongodb-memory-server');
 const app = express();
 
-var bodyParser = require('body-parser');
-
-
-app.use(bodyParser.urlencoded({
-    extended: true
-}));
-app.use(bodyParser.json());
-
-
-const DatabaseCleaner = require('database-cleaner');
-var dbCleaner = new DatabaseCleaner('mongodb');
-const dbConnection  = 'mongodb://localhost/nrts-test';
-const options = {
-    useMongoClient: true,
-    poolSize: 10,
-    reconnectTries: Number.MAX_VALUE, // Never stop trying to reconnect
-    reconnectInterval: 500, // Reconnect every 500ms
-    poolSize: 10, // Maintain up to 10 socket connections
-    // If not connected, return errors immediately rather than waiting for reconnect
-    bufferMaxEntries: 0,
-    connectTimeoutMS: 10000, // Give up initial connection after 10 seconds
-    socketTimeoutMS: 45000 // Close sockets after 45 seconds of inactivity
-};
-
-const mongoose = require('mongoose');
+setupAppServer();
 
 beforeAll(() => {
-    mongoose.connect(dbConnection, options);
-});
-
-afterAll(function(done){
-    mongoose.connection.db.dropDatabase(function(){
-      mongoose.connection.close(done);
-    });
+    setupInMemoryMongoServer();
 });
 
 afterEach(done => {
     dbCleaner.clean(mongoose.connection.db, () => { done() });
 });
+
+function setupAppServer() {
+    app.use(bodyParser.urlencoded({
+        extended: true
+    }));
+    app.use(bodyParser.json());
+}
+
+function setupInMemoryMongoServer() {
+    const mongoServer = new mongoDbMemoryServer.default({
+        instance: {},
+        binary: {
+            version: '3.2.21', // Mongo Version
+        },
+    });
+    mongoServer.getConnectionString().then((mongoUri) => {
+        mongoose.Promise = global.Promise;
+        
+        mongoose.connect(mongoUri, mongooseOpts);
+        
+        mongoose.connection.on('error', (e) => {
+            console.log('*********** ERROR ***********');
+            
+            if (e.message.code === 'ETIMEDOUT') {
+                console.log(e);
+                mongoose.connect(mongoUri, mongooseOpts);
+            }
+            console.log(e);
+        });
+        
+        mongoose.connection.once('open', () => {
+            console.log(`MongoDB successfully connected to ${mongoUri}`);
+        });
+    });
+}
 
 exports.app = app;

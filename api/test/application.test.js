@@ -369,7 +369,6 @@ describe('PUT /application/:id', () => {
 });
 
 describe('PUT /application/:id/publish', () => {
-  // failing to do mongo version
   test('publishes an application', done => {
       let existingApplication = new Application({
           code: 'EXISTING',
