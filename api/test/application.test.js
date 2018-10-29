@@ -84,6 +84,17 @@ app.delete('/api/application/:id', function(req, res) {
   return applicationController.protectedDelete(swaggerWithExtraParams, res);
 });
 
+app.put('/api/application/:id', function(req, res) {
+  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
+  swaggerWithExtraParams['swagger']['params']['appId'] = {
+    value: req.params.id
+  };
+  swaggerWithExtraParams['swagger']['params']['AppObject'] = {
+    value: req.body
+  };
+  return applicationController.protectedPut(swaggerWithExtraParams, res);
+});
+
 app.put('/api/application/:id/publish', function(req, res) {
   let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
   swaggerWithExtraParams['swagger']['params']['appId'] = {
@@ -295,8 +306,70 @@ describe('POST /application', () => {
   });
 });
 
+describe('PUT /application/:id', () => {
+  test('updates an application', done => {
+      let existingApplication = new Application({
+          code: 'SOME_APP',
+          name: 'Boring Application'
+      });
+      let updateData = {
+          name: 'Exciting Application'
+      };
+      existingApplication.save().then(application => {
+          let uri = '/api/application/' + application._id;
+          request(app).put(uri, updateData)
+          .send(updateData)
+          .then(response => {
+              Application.findOne({name: 'Exciting Application'}).exec(function(error, application) {
+                  expect(application).toBeDefined();
+                  expect(application).not.toBeNull();
+                  done();
+              });
+          });
+      });
+  });
+
+  test('404s if the application does not exist', done => {
+      let uri = '/api/application/' + 'NON_EXISTENT_ID';
+      request(app).put(uri)
+      .send({name: 'hacker_man'})
+      .expect(404)
+      .then(response => {
+          done();
+      });
+  });
+
+  test('does not allow updating tags', done => {
+    let existingApplication = new Application({
+      code: 'EXISTING',
+      tags: [['public']],
+      internal: {
+        tags: [['public']]
+      }
+    });
+    let updateData = {
+      tags: [['public'], ['sysadmin']],
+      internal: {
+        tags: [['sysadmin']]
+      }
+    };
+    existingApplication.save().then(application => {
+      let uri = '/api/application/' + application._id;
+      request(app).put(uri, updateData)
+      .send(updateData)
+      .then(response => {
+        Application.findById(existingApplication._id).exec(function(error, application) {
+          expect(application.tags.length).toEqual(1)
+          expect(application.internal.tags.length).toEqual(1);
+          done();
+        });
+      });
+    });
+  });
+});
 
 describe('PUT /application/:id/publish', () => {
+  // failing to do mongo version
   test('publishes an application', done => {
       let existingApplication = new Application({
           code: 'EXISTING',
@@ -309,11 +382,13 @@ describe('PUT /application/:id/publish', () => {
           .expect(200)
           .send({})
           .then(response => {
-              Application.findOne({code: 'EXISTING'}).exec(function(error, application) {
-                  expect(application).toBeDefined();
-                  expect(application.tags[0]).toEqual(expect.arrayContaining(['public']));
-                  done();
-              });
+            console.log(response.body);
+            Application.findOne({code: 'EXISTING'}).exec(function(error, application) {
+              console.log(application);
+              expect(application).toBeDefined();
+              expect(application.tags[0]).toEqual(expect.arrayContaining(['public']));
+              done();
+            });
           });
       })
       
