@@ -25,13 +25,20 @@ function setupAppServer() {
 }
 
 function setupInMemoryMongoServer() {
-    const mongoServer = new mongoDbMemoryServer.MongoMemoryServer();
+    const mongoServer = new mongoDbMemoryServer.default({
+        instance: {},
+        binary: {
+            version: '3.2.21', // Mongo Version
+        },
+    });
     mongoServer.getConnectionString().then((mongoUri) => {
         mongoose.Promise = global.Promise;
         
         mongoose.connect(mongoUri, mongooseOpts);
         
         mongoose.connection.on('error', (e) => {
+            console.log('*********** ERROR ***********');
+            
             if (e.message.code === 'ETIMEDOUT') {
                 console.log(e);
                 mongoose.connect(mongoUri, mongooseOpts);
