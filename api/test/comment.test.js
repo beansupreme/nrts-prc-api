@@ -561,7 +561,7 @@ describe('PUT /comment/:id/publish', () => {
       
   });
 
-  test('404s if the application does not exist', done => {
+  test('404s if the comment does not exist', done => {
       let uri = '/api/comment/' + 'NON_EXISTENT_ID' + '/publish';
       request(app).put(uri)
       .send({})
@@ -573,7 +573,7 @@ describe('PUT /comment/:id/publish', () => {
 });
 
 describe('PUT /comment/:id/unpublish', () => {
-  test('unpublishes an application', done => {
+  test('unpublishes a comment', done => {
       let existingComment = new Comment({
           code: 'EXISTING',
           comment: 'I love this project',
@@ -585,9 +585,9 @@ describe('PUT /comment/:id/unpublish', () => {
           .expect(200)
           .send({})
           .then(response => {
-              Comment.findOne({code: 'EXISTING'}).exec(function(error, comment) {
-                  expect(comment).toBeDefined();
-                  expect(comment.tags[0]).toEqual(expect.arrayContaining([]));
+              Comment.findOne({code: 'EXISTING'}).exec(function(error, updatedComment) {
+                  expect(updatedComment).toBeDefined();
+                  expect(updatedComment.tags[0]).toEqual(expect.arrayContaining([]));
                   done();
               });
           });
