@@ -30,6 +30,8 @@ const _ = require('lodash');
 
 const commentPeriodController = require('../controllers/commentperiod.js');
 require('../helpers/models/commentperiod');
+require('../helpers/models/user');
+var User = mongoose.model('User');
 var CommentPeriod = mongoose.model('CommentPeriod');
 
 app.get('/api/commentperiod', function(req, res) {
@@ -56,12 +58,12 @@ app.get('/api/public/commentperiod/:id', function(req, res) {
   return commentPeriodController.publicGet(swaggerWithExtraParams, res);
 });
 
-app.post('/api/public/commentperiod/', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(publicSwaggerParams);
-  swaggerWithExtraParams['swagger']['params']['commentPeriod'] = {
+app.post('/api/commentperiod/', function(req, res) {
+  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
+  swaggerWithExtraParams['swagger']['params']['_commentPeriod'] = {
     value: req.body
   };
-  return commentPeriodController.unProtectedPost(swaggerWithExtraParams, res);
+  return commentPeriodController.protectedPost(swaggerWithExtraParams, res);
 });
 
 app.put('/api/commentperiod/:id', function(req, res) {
@@ -111,6 +113,28 @@ function setupCommentPeriods(commentPeriods) {
       });
   });
 };
+
+function setupUser() {
+  return new Promise(function(resolve, reject) {
+    var authUser = new User({
+      displayName: 'Api User',
+      firstName: 'Api',
+      lastName: 'User',
+      username: 'api_consumer',
+      password: 'V3ryS3cr3tPass',
+    });
+    authUser.save(function(error, user) {
+      if (error) { 
+        reject(error);
+      } else {
+        swaggerParams['swagger']['params']['auth_payload']['userID'] = user._id
+        userID = user._id;
+        
+        resolve();
+      }
+    });
+  });
+}
 
 describe('GET /commentperiod', () => {
   test('returns a list of non-deleted, public and sysadmin comment periods', done => {
@@ -237,13 +261,18 @@ describe('GET /public/commentperiod/{id}', () => {
   });
 });
 
-describe('POST /public/commentperiod', () => {
-  test.skip('creates a new comment period', done => {
+describe('POST /commentperiod', () => {
+  beforeEach(done => {
+    setupUser().then(done);
+  });
+
+  test('creates a new comment period', done => {
     let commentPeriodObj = {
         name: 'Victoria',
         description: 'Victoria is a great place'
     };
-    request(app).post('/api/public/commentperiod', commentPeriodObj)
+    
+    request(app).post('/api/commentperiod', commentPeriodObj)
     .send(commentPeriodObj)
     .expect(200).then(response => {
         expect(response.body).toHaveProperty('_id');
@@ -256,94 +285,47 @@ describe('POST /public/commentperiod', () => {
     });
   });
 
-  test.skip('sets the date added and comment status to pending', done => {
+  test('it sets the _addedBy to the person creating the comment period', done => {
+    let commentPeriodObj = {
+      name: 'Victoria',
+      description: 'Victoria is a great place'
+    };
+    request(app).post('/api/commentperiod', commentPeriodObj)
+    .send(commentPeriodObj)
+    .expect(200).then(response => {
+        expect(response.body).toHaveProperty('_id');
+        CommentPeriod.findById(response.body['_id']).exec(function(error, commentPeriod) {
+          expect(commentPeriod).not.toBeNull();
+          expect(commentPeriod._addedBy).toEqual(userID);
+          // expect(commentPeriod.internal._addedBy).toEqual(userID);
+          done();
+        });
+    });
+  });
+
+
+  test('defaults to sysadmin for tags and review tags', done => {
     let commentObj = {
       name: 'Victoria',
-      comment: 'Victoria is a great place'
+      description: 'Victoria is a great place'
     };
-    request(app).post('/api/public/commentperiod', commentObj)
+    request(app).post('/api/commentperiod', commentObj)
     .send(commentObj)
     .expect(200).then(response => {
       expect(response.body).toHaveProperty('_id');
       CommentPeriod.findById(response.body['_id']).exec(function(error, comment) {
         expect(comment).not.toBeNull();
-        expect(comment.commentStatus).toBe('Pending');
-        expect(comment.dateAdded).not.toBeNull();
+
+        expect(comment.tags.length).toEqual(1)
+        expect(comment.tags[0]).toEqual(expect.arrayContaining(['sysadmin']));
+
+        expect(comment.internal.tags.length).toEqual(1)
+        expect(comment.internal.tags[0]).toEqual(expect.arrayContaining(['sysadmin']));
         done();
       });
     });
   });
 
-  describe.skip('tags', () => {
-    test('defaults to sysadmin for tags and review tags', done => {
-      let commentObj = {
-        name: 'Victoria',
-        comment: 'Victoria is a great place'
-      };
-      request(app).post('/api/public/commentperiod', commentObj)
-      .send(commentObj)
-      .expect(200).then(response => {
-        expect(response.body).toHaveProperty('_id');
-        CommentPeriod.findById(response.body['_id']).exec(function(error, comment) {
-          expect(comment).not.toBeNull();
-
-          expect(comment.tags.length).toEqual(1)
-          expect(comment.tags[0]).toEqual(expect.arrayContaining(['sysadmin']));
-
-          expect(comment.review.tags.length).toEqual(1)
-          expect(comment.review.tags[0]).toEqual(expect.arrayContaining(['sysadmin']));
-          done();
-        });
-      });
-    });
-
-    test('sets commentAuthor tags to public, and internal tags to by default', done => {
-      let commentObj = {
-        name: 'Victoria',
-        comment: 'Victoria is a great place'
-      };
-      request(app).post('/api/public/commentperiod', commentObj)
-      .send(commentObj)
-      .expect(200).then(response => {
-        expect(response.body).toHaveProperty('_id');
-        CommentPeriod.findById(response.body['_id']).exec(function(error, comment) {
-          expect(comment.commentAuthor).not.toBeNull();
-
-          expect(comment.commentAuthor.tags.length).toEqual(2);
-          expect(comment.commentAuthor.tags[0]).toEqual(expect.arrayContaining(['sysadmin']));
-          expect(comment.commentAuthor.tags[1]).toEqual(expect.arrayContaining(['public']));
-
-          expect(comment.commentAuthor.internal.tags.length).toEqual(1);
-          expect(comment.commentAuthor.internal.tags[0]).toEqual(expect.arrayContaining(['sysadmin']));
-          
-          done();
-        });
-      });
-    });
-
-    test('sets commentAuthor tags to sysadmin if requestedAnonymous', done => {
-      let commentObj = {
-        name: 'Victoria',
-        comment: 'Victoria is a great place',
-        commentAuthor: {
-          requestedAnonymous: true
-        }
-      };
-
-      request(app).post('/api/public/commentperiod', commentObj)
-      .send(commentObj)
-      .expect(200).then(response => {
-        expect(response.body).toHaveProperty('_id');
-        CommentPeriod.findById(response.body['_id']).exec(function(error, comment) {
-          expect(comment.commentAuthor).not.toBeNull();
-
-          expect(comment.commentAuthor.tags.length).toEqual(1);
-          expect(comment.commentAuthor.tags[0]).toEqual(expect.arrayContaining(['sysadmin']));
-          done();
-        });
-      });
-    });
-  });
 });
 
 describe('PUT /commentperiod/:id', () => {
