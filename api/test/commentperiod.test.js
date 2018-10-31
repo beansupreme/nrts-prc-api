@@ -93,6 +93,13 @@ app.put('/api/commentperiod/:id/unpublish', function(req, res) {
   return commentPeriodController.protectedUnPublish(swaggerWithExtraParams, res);
 });
 
+app.delete('/api/commentperiod/:id', function(req, res) { 
+  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
+  swaggerWithExtraParams['swagger']['params']['CommentPeriodId'] = {
+      value: req.params.id
+  };
+  return commentPeriodController.protectedDelete(swaggerWithExtraParams, res);
+});
 
 const commentPeriods = [
   { code: 'SPECIAL', name: 'Special Comment', description: 'This Comment is so special', tags: [['public'], ['sysadmin']], isDeleted: false },
@@ -163,7 +170,7 @@ describe('GET /commentperiod', () => {
     });
   });
 
-  test('returns an empty array when there are no comments', done => {
+  test('returns an empty array when there are no comment periods', done => {
       request(app).get('/api/commentperiod')
       .expect(200)
       .then(response => {
@@ -174,11 +181,11 @@ describe('GET /commentperiod', () => {
   });
 });
 
-describe('GET /comment/{id}', () => {
+describe('GET /commentperiod/{id}', () => {
   test('returns a single CommentPeriod ', done => {
     setupCommentPeriods(commentPeriods).then((documents) => {
-      CommentPeriod.findOne({code: 'SPECIAL'}).exec(function(error, comment) {
-        let specialCommentId = comment._id.toString();
+      CommentPeriod.findOne({code: 'SPECIAL'}).exec(function(error, commentPeriod) {
+        let specialCommentId = commentPeriod._id.toString();
         let uri = '/api/commentperiod/' + specialCommentId;
         
         request(app)
@@ -200,7 +207,7 @@ describe('GET /comment/{id}', () => {
 });
 
 describe('GET /public/commentperiod', () => {
-  test('returns a list of public Comments', done => {
+  test('returns a list of public Comment periods', done => {
     setupCommentPeriods(commentPeriods).then((documents) => {
       request(app).get('/api/public/commentperiod')
       .expect(200)
@@ -276,10 +283,10 @@ describe('POST /commentperiod', () => {
     .send(commentPeriodObj)
     .expect(200).then(response => {
         expect(response.body).toHaveProperty('_id');
-        CommentPeriod.findById(response.body['_id']).exec(function(error, comment) {
-            expect(comment).not.toBeNull();
-            expect(comment.name).toBe('Victoria');
-            expect(comment.description).toBe('Victoria is a great place');
+        CommentPeriod.findById(response.body['_id']).exec(function(error, commentPeriod) {
+            expect(commentPeriod).not.toBeNull();
+            expect(commentPeriod.name).toBe('Victoria');
+            expect(commentPeriod.description).toBe('Victoria is a great place');
             done();
         });
     });
@@ -313,14 +320,14 @@ describe('POST /commentperiod', () => {
     .send(commentObj)
     .expect(200).then(response => {
       expect(response.body).toHaveProperty('_id');
-      CommentPeriod.findById(response.body['_id']).exec(function(error, comment) {
-        expect(comment).not.toBeNull();
+      CommentPeriod.findById(response.body['_id']).exec(function(error, commentPeriod) {
+        expect(commentPeriod).not.toBeNull();
 
-        expect(comment.tags.length).toEqual(1)
-        expect(comment.tags[0]).toEqual(expect.arrayContaining(['sysadmin']));
+        expect(commentPeriod.tags.length).toEqual(1)
+        expect(commentPeriod.tags[0]).toEqual(expect.arrayContaining(['sysadmin']));
 
-        expect(comment.internal.tags.length).toEqual(1)
-        expect(comment.internal.tags[0]).toEqual(expect.arrayContaining(['sysadmin']));
+        expect(commentPeriod.internal.tags.length).toEqual(1)
+        expect(commentPeriod.internal.tags[0]).toEqual(expect.arrayContaining(['sysadmin']));
         done();
       });
     });
@@ -350,9 +357,9 @@ describe('PUT /commentperiod/:id', () => {
     request(app).put(uri, updateData)
     .send(updateData)
     .then(response => {
-      CommentPeriod.findOne({description: 'This application is amazing!'}).exec(function(error, comment) {
-        expect(comment).toBeDefined();
-        expect(comment).not.toBeNull();
+      CommentPeriod.findOne({description: 'This application is amazing!'}).exec(function(error, commentPeriod) {
+        expect(commentPeriod).toBeDefined();
+        expect(commentPeriod).not.toBeNull();
         done();
       });
     });
@@ -467,7 +474,31 @@ describe('PUT /commentperiod/:id/unpublish', () => {
 });
 
 describe('DELETE /commentperiod/:id', () => {
-  
+  test('It soft deletes a comment period', done => {
+    setupCommentPeriods(commentPeriods).then((documents) => {
+      CommentPeriod.findOne({code: 'VANILLA'}).exec(function(error, commentPeriod) {
+        let vanillaCommentPeriodId = commentPeriod._id.toString();
+        let uri = '/api/commentperiod/' + vanillaCommentPeriodId;
+        request(app)
+        .delete(uri)
+        .expect(200)
+        .then(response => {
+          CommentPeriod.findOne({code: 'VANILLA'}).exec(function(error, commentPeriod) {
+            expect(commentPeriod.isDeleted).toBe(true);
+            done();
+          });
+        });
+      });
+    });
+  });
+
+  test('404s if the comment period does not exist', done => {
+    let uri = '/api/commentperiod/' + 'NON_EXISTENT_ID';
+    request(app)
+    .delete(uri)
+    .expect(404)
+    .then(response => {
+        done();
+    });
+  });
 });
-
-
