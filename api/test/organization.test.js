@@ -170,7 +170,7 @@ describe('GET /organization/{id}', () => {
 
 describe('POST /organization', () => {
     beforeEach(done => {
-        setupUser().then(done());
+        setupUser().then(done);
     });
     
     test('creates a new organization', done => {
