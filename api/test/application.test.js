@@ -2,6 +2,8 @@ const test_helper = require('./test_helper');
 const app = test_helper.app;
 const mongoose = require('mongoose');
 const request = require('supertest');
+const nock = require('nock');
+const tantalisResponse = require('./fixtures/tantalis_response.json');
 let swaggerParams = {
   swagger: {
       params:{
@@ -26,8 +28,10 @@ const _ = require('lodash');
 
 const applicationController = require('../controllers/application.js');
 require('../helpers/models/application');
+require('../helpers/models/user');
 require('../helpers/models/feature');
 var Application = mongoose.model('Application');
+var User = mongoose.model('User');
 var Feature = mongoose.model('Feature');
 
 const applications = [
@@ -52,6 +56,33 @@ function setupApplications(applications) {
   });
 };
 
+var authUser;
+
+function setupUser() {
+    return new Promise(function(resolve, reject) {
+        if (_.isUndefined(authUser)) {
+            authUser = new User({
+                displayName: 'Api User',
+                firstName: 'Api',
+                lastName: 'User',
+                username: 'api_consumer',
+                password: 'V3ryS3cr3tPass',
+            });
+            authUser.save(function(error, user) {
+                if (error) { 
+                    reject(error);
+                } else {
+                    swaggerParams['swagger']['params']['auth_payload']['userID'] = user._id
+                    userID = user._id;
+                    resolve();
+                }
+            });
+        } else {
+            resolve();
+        }
+    });
+}
+
 app.get('/api/application', function(req, res) {
   return applicationController.protectedGet(swaggerParams, res);
 });
@@ -74,6 +105,14 @@ app.get('/api/public/application/:id', function(req, res) {
       value: req.params.id
   };
   return applicationController.publicGet(swaggerWithExtraParams, res);
+});
+
+app.post('/api/application/', function(req, res) {
+  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
+  swaggerWithExtraParams['swagger']['params']['app'] = {
+    value: req.body
+  };
+  return applicationController.protectedPost(swaggerWithExtraParams, res);
 });
 
 app.delete('/api/application/:id', function(req, res) { 
@@ -269,14 +308,25 @@ describe('DELETE /application/id', () => {
 
 describe('POST /application', () => {
   beforeEach(done => {
-    setupUser().then(done());
+    setupUser().then(done);
   });
+  const bcgwDomain = 'https://openmaps.gov.bc.ca';
+  const searchPath = '/geo/pub/WHSE_TANTALIS.TA_CROWN_TENURES_SVW/ows?service=wfs&version=2.0.0&request=getfeature&typename=PUB:WHSE_TANTALIS.TA_CROWN_TENURES_SVW&outputFormat=json&srsName=EPSG:4326&CQL_FILTER=DISPOSITION_TRANSACTION_SID=';
+  let applicationObj = {
+    name: 'Victoria',
+    code: 'victoria',
+    tantalisID: 999999
+  };
+  var bcgw = nock(bcgwDomain);
+  let urlEncodedTantalisId = `%27${applicationObj.tantalisID}%27`;
+  
+  describe('when bcgw finds a matching object', () => {
+    beforeEach(() => {
+      return bcgw.get(searchPath + urlEncodedTantalisId)
+      .reply(200, tantalisResponse);
+    });
 
-  test.skip('creates a new application', done => {
-      let applicationObj = {
-        name: 'Victoria',
-        code: 'victoria'
-      };
+    test('creates a new application', done => {
       request(app).post('/api/application', applicationObj)
       .send(applicationObj)
       .expect(200).then(response => {
@@ -287,21 +337,80 @@ describe('POST /application', () => {
           done();
         });
       });
-  });
+    });
+
+    test('sets geographical properties', done => {
+      request(app).post('/api/application', applicationObj)
+      .send(applicationObj)
+      .expect(200).then(response => {
+        expect(response.body).toHaveProperty('_id');
+        Application.findById(response.body['_id']).exec(function(error, application) {
+          expect(application.areaHectares).not.toBeNull();
+          expect(application.areaHectares).toBeGreaterThan(1);
+
+          expect(application.centroid).toBeDefined();
+          expect(application.centroid.length).toBe(2);
+
+          done();
+        });
+      });
+    });
+    
+    test('it sets the _addedBy to the person creating the application', done => {
+      request(app).post('/api/application', applicationObj)
+      .send(applicationObj)
+      .expect(200).then(response => {
+        expect(response.body).toHaveProperty('_id');
+        Application.findOne({code: 'victoria'}).exec(function(error, application) {
+          expect(application).not.toBeNull();
+          expect(application._addedBy).not.toBeNull();
+          expect(application._addedBy).toEqual(userID);
+          done();
+        });
+      });
+    });
   
-  test.skip('it sets the _addedBy to the person creating the application', done => {
-    let applicationObj = {
-        name: 'Victoria',
-        code: 'victoria'
-    };
-    request(app).post('/api/application', applicationObj)
-    .send(applicationObj)
-    .expect(200).then(response => {
-      expect(response.body).toHaveProperty('_id');
-      Application.findOne({code: 'victoria'}).exec(function(error, application) {
-        expect(application._addedBy).toEqual(userID);
+    test('defaults to sysadmin for tags and review tags', done => {
+      request(app).post('/api/application', applicationObj)
+      .send(applicationObj)
+      .expect(200).then(response => {
+        expect(response.body).toHaveProperty('_id');
+        Application.findById(response.body['_id']).exec(function(error, application) {
+          expect(application).not.toBeNull();
+  
+          expect(application.tags.length).toEqual(1)
+          expect(application.tags[0]).toEqual(expect.arrayContaining(['sysadmin']));
+  
+          expect(application.internal.tags.length).toEqual(1)
+          expect(application.internal.tags[0]).toEqual(expect.arrayContaining(['sysadmin']));
+          done();
+        });
+      });
+    });
+
+    test.skip('handling features', done => {
+      
+    });
+  });
+
+  describe('when bcgw returns an error response', () => {
+    beforeEach(() => {
+      return bcgw.get(searchPath + urlEncodedTantalisId)
+      .reply(500, {"error": "Something went wrong"});
+    });
+
+    test.skip('throws 500 when an error is caught', done => {
+
+      request(app).post('/api/application', applicationObj)
+      .send(applicationObj)
+      .expect(500)
+      .catch(errorResponse => {
         done();
       });
+    });
+
+    test.skip('handles a 404 correctly', done => {
+      done();
     });
   });
 });
@@ -381,9 +490,7 @@ describe('PUT /application/:id/publish', () => {
           .expect(200)
           .send({})
           .then(response => {
-            console.log(response.body);
             Application.findOne({code: 'EXISTING'}).exec(function(error, application) {
-              console.log(application);
               expect(application).toBeDefined();
               expect(application.tags[0]).toEqual(expect.arrayContaining(['public']));
               done();

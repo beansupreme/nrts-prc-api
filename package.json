@@ -41,6 +41,7 @@
     "database-cleaner": "^1.2.0",
     "jest": "^23.6.0",
     "mongodb-memory-server": "^2.6.2",
+    "nock": "^10.0.1",
     "supertest": "^3.3.0"
   }
 }
