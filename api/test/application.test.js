@@ -388,8 +388,17 @@ describe('POST /application', () => {
       });
     });
 
-    test.skip('handling features', done => {
-      
+    test('saves features on the application', done => {
+      request(app).post('/api/application', applicationObj)
+      .send(applicationObj)
+      .expect(200).then(response => {
+        expect(response.body).toHaveProperty('_id');
+        Feature.findOne({applicationID: response.body['_id']}).exec(function(error, feature) {
+          expect(feature).not.toBeNull();
+          expect(feature.INTRID_SID).not.toBeNull();
+          done();
+        });
+      });
     });
   });
 
@@ -478,26 +487,28 @@ describe('PUT /application/:id', () => {
 });
 
 describe('PUT /application/:id/publish', () => {
+  let existingApplication;
+  beforeEach(() => {
+    existingApplication = new Application({
+      code: 'Existing',
+      name: 'Boring application',
+    });
+    return existingApplication.save();
+  });
+  
   test('publishes an application', done => {
-      let existingApplication = new Application({
-          code: 'EXISTING',
-          name: 'Boring application',
-          tags: []
+    let uri = '/api/application/' + existingApplication._id + '/publish';
+    request(app).put(uri)
+    .expect(200)
+    .send({})
+    .then(response => {
+      Application.findById(existingApplication._id).exec(function(error, application) {
+        expect(application).toBeDefined();
+        expect(application).not.toBeNull();
+        expect(application.tags[0]).toEqual(expect.arrayContaining(['public']));
+        done();
       });
-      existingApplication.save().then(application => {
-          let uri = '/api/application/' + application._id + '/publish';
-          request(app).put(uri)
-          .expect(200)
-          .send({})
-          .then(response => {
-            Application.findOne({code: 'EXISTING'}).exec(function(error, application) {
-              expect(application).toBeDefined();
-              expect(application.tags[0]).toEqual(expect.arrayContaining(['public']));
-              done();
-            });
-          });
-      })
-      
+    });
   });
 
   test('404s if the application does not exist', done => {
@@ -510,30 +521,49 @@ describe('PUT /application/:id/publish', () => {
       });
   });
 
-  test.skip('handles feature publish', done => {
-    
+  test('handles feature publish', done => {
+    let applicationFeature = new Feature({
+      tags: [],
+      applicationID: existingApplication._id
+    });
+    applicationFeature.save().then(appFeature => { 
+      let uri = '/api/application/' + existingApplication._id + '/publish';
+      request(app).put(uri)
+      .expect(200)
+      .send({})
+      .then(response => {
+        Feature.findById(appFeature._id).exec(function(error, feature) {
+          expect(feature).not.toBeNull();
+          expect(feature.tags[0]).toEqual(expect.arrayContaining(['public']));
+          done();
+        });
+      });  
+    });
   });
 });
 
 describe('PUT /application/:id/unpublish', () => {
+  let existingApplication;
+  beforeEach(() => {
+    existingApplication = new Application({
+      code: 'Existing',
+      name: 'Boring application',
+      tags: [['public']]
+    });
+    return existingApplication.save();
+  });
+
   test('unpublishes an application', done => {
-      let existingApplication = new Application({
-          code: 'EXISTING',
-          name: 'Boring application',
-          tags: [['public']]
-      });
-      existingApplication.save().then(application => {
-          let uri = '/api/application/' + application._id + '/unpublish';
-          request(app).put(uri)
-          .expect(200)
-          .send({})
-          .then(response => {
-              Application.findOne({code: 'EXISTING'}).exec(function(error, application) {
-                  expect(application).toBeDefined();
-                  expect(application.tags[0]).toEqual(expect.arrayContaining([]));
-                  done();
-              });
-          });
+      let uri = '/api/application/' + existingApplication._id + '/unpublish';
+      request(app).put(uri)
+      .expect(200)
+      .send({})
+      .then(response => {
+        Application.findById(existingApplication._id).exec(function(error, application) {
+          expect(application).toBeDefined();
+          expect(application.tags[0]).toEqual(expect.arrayContaining([]));
+          done();
+        });
       });
   });
 
@@ -547,7 +577,25 @@ describe('PUT /application/:id/unpublish', () => {
       });
   });
 
-  test.skip('handles feature unpublish', done => {
-    
+  test('handles feature unpublish', done => {
+    let applicationFeature = new Feature({
+      tags: [],
+      applicationID: existingApplication._id,
+      tags: [['public']]
+    });
+
+    applicationFeature.save().then(appFeature => { 
+      let uri = '/api/application/' + existingApplication._id + '/unpublish';
+      request(app).put(uri)
+      .expect(200)
+      .send({})
+      .then(response => {
+        Feature.findById(appFeature._id).exec(function(error, feature) {
+          expect(feature).not.toBeNull();
+          expect(feature.tags[0]).toEqual(expect.arrayContaining([]));
+          done();
+        });
+      });  
+    });
   });
 });
