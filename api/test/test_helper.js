@@ -9,12 +9,16 @@ const app = express();
 
 setupAppServer();
 
-beforeAll(() => {
-    setupInMemoryMongoServer();
+beforeAll(done => {
+    setupInMemoryMongoServer(done);
 });
 
 afterEach(done => {
-    dbCleaner.clean(mongoose.connection.db, () => { done() });
+    if (mongoose.connection && mongoose.connection.db) {
+        dbCleaner.clean(mongoose.connection.db, () => { done() });
+    } else {
+        done();
+    }
 });
 
 function setupAppServer() {
@@ -24,7 +28,7 @@ function setupAppServer() {
     app.use(bodyParser.json());
 }
 
-function setupInMemoryMongoServer() {
+function setupInMemoryMongoServer(done) {
     const mongoServer = new mongoDbMemoryServer.default({
         instance: {},
         binary: {
@@ -44,10 +48,12 @@ function setupInMemoryMongoServer() {
                 mongoose.connect(mongoUri, mongooseOpts);
             }
             console.log(e);
+            done(error);
         });
         
         mongoose.connection.once('open', () => {
             console.log(`MongoDB successfully connected to ${mongoUri}`);
+            done();
         });
     });
 }
