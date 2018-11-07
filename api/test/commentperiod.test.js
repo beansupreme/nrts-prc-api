@@ -1,4 +1,5 @@
 const test_helper = require('./test_helper');
+const userFactory = require('./factories/user_factory').factory;
 const app = test_helper.app;
 const mongoose = require('mongoose');
 const request = require('supertest');
@@ -123,22 +124,12 @@ function setupCommentPeriods(commentPeriods) {
 
 function setupUser() {
   return new Promise(function(resolve, reject) {
-    var authUser = new User({
-      displayName: 'Api User',
-      firstName: 'Api',
-      lastName: 'User',
-      username: 'api_consumer',
-      password: 'V3ryS3cr3tPass',
-    });
-    authUser.save(function(error, user) {
-      if (error) { 
-        reject(error);
-      } else {
-        swaggerParams['swagger']['params']['auth_payload']['userID'] = user._id
-        userID = user._id;
-        
-        resolve();
-      }
+    userFactory.build('user').then(user => {
+      swaggerParams['swagger']['params']['auth_payload']['userID'] = user._id
+      userID = user._id;
+      resolve();
+    }).catch(error => {
+      reject(error);
     });
   });
 }

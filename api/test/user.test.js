@@ -1,4 +1,5 @@
 const test_helper = require('./test_helper');
+const userFactory = require('./factories/user_factory').factory;
 const app = test_helper.app;
 const mongoose = require('mongoose');
 const request = require('supertest');
@@ -49,22 +50,17 @@ app.put('/api/user/:id', function(req, res) {
     return userController.protectedPut(swaggerWithExtraParams, res);
 });
 
-function setupUsers(users) {
+function setupUsers(usersData) {
     return new Promise(function(resolve, reject) {
-        User.collection.insert(users, function(error, documents) {
-            if (error) { 
-                console.log('*********ERROR *********')
-                console.log(error)
-                reject(error); 
-            }
-            else {
-                resolve(documents) 
-            }
+        userFactory.createMany('user', usersData).then(usersArray => {
+            resolve(usersArray);
+        }).catch(error => {
+            reject(error);
         });
     });
 }
 
-const usersArray = [
+const usersData = [
     {
         username: 'admin1', password: 'v3rys3cr3t', roles: ['sysadmin', 'public']
     },
@@ -76,7 +72,7 @@ const usersArray = [
 
 describe('GET /User', () => {
     test('returns a list of users', done => {
-        setupUsers(usersArray)
+        setupUsers(usersData)
         .then((users) => {
             request(app).get('/api/user').expect(200).then(response =>{
                 expect(response.body.length).toEqual(2);
@@ -105,7 +101,7 @@ describe('GET /User', () => {
 
 describe('GET /User/{id}', () => {
     test('returns a single user', done => {
-        setupUsers(usersArray)
+        setupUsers(usersData)
         .then((users) => {
             User.findOne({username: 'admin1'}).exec(function(error, user) {
                 let publicUserId = user._id.toString();;
@@ -174,28 +170,24 @@ describe('PUT /user/:id', () => {
     let cookieUser;
 
     function setupUser() {
-        cookieUser = new User({
+        userAttributes = {
             displayName: 'Cookie Monster',
             firstName: 'Cookie',
             lastName: 'Monster',
             username: 'the_cookie_monster',
             password: 'I_am_so_quirky',
             roles: []
-        });
-
+        };
         return new Promise(function(resolve, reject) {
-            cookieUser.save(function(error, user) {
-                if (error) { 
-                    reject(error);
-                } else {
-                    resolve();
-                }
-            });
+            userFactory.create('user', userAttributes).then(user => {
+                cookieUser = user;
+                resolve()
+            })
         });
     }
 
     beforeEach(done => {
-        setupUser().then(done());
+        setupUser().then(done);
     });
 
     test('updates a user', done => {
@@ -203,14 +195,16 @@ describe('PUT /user/:id', () => {
             displayName: 'Cookie Guy'
         };
         let uri = '/api/user/' + cookieUser._id;
-        request(app).put(uri, updateData)
+        request(app).put(uri)
         .send(updateData)
-        .then(response => {
+        .expect(200)
+        .then(response => {  
             expect(response.body.displayName).toBe('Cookie Guy');
             User.findOne({displayName: 'Cookie Guy'}).exec(function(error, user) {
                 expect(user).toBeDefined();
+                expect(user).not.toBeNull();
                 done();
-            });
+            })
          });
     });
 
