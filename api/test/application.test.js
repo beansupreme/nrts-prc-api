@@ -1,4 +1,6 @@
 const test_helper = require('./test_helper');
+const userFactory = require('./factories/user_factory').factory;
+const applicationFactory = require('./factories/application_factory').factory;
 const app = test_helper.app;
 const mongoose = require('mongoose');
 const request = require('supertest');
@@ -34,7 +36,7 @@ var Application = mongoose.model('Application');
 var User = mongoose.model('User');
 var Feature = mongoose.model('Feature');
 
-const applications = [
+const applicationsData = [
   { code: 'SPECIAL', name: 'Special Application', tags: [['public'], ['sysadmin']], isDeleted: false },
   { code: 'VANILLA', name: 'Vanilla Ice Cream', tags: [['public']], isDeleted: false },
   { code: 'TOP_SECRET', name: 'Confidential Application', tags: [['sysadmin']], isDeleted: false },
@@ -42,16 +44,12 @@ const applications = [
 ];
 
 
-function setupApplications(applications) {
+function setupApplications(applicationsData) {
   return new Promise(function(resolve, reject) {
-    Application.collection.insert(applications, function(error, documents) {
-      if (error) { 
-        console.log('error creating apps')
-        reject(error); 
-      }
-      else {
-        resolve(documents);
-      }
+    applicationFactory.createMany('application', applicationsData).then(applicationArray => {
+      resolve(applicationArray);
+    }).catch(error => {
+      reject(error);
     });
   });
 };
@@ -59,28 +57,20 @@ function setupApplications(applications) {
 var authUser;
 
 function setupUser() {
-    return new Promise(function(resolve, reject) {
-        if (_.isUndefined(authUser)) {
-            authUser = new User({
-                displayName: 'Api User',
-                firstName: 'Api',
-                lastName: 'User',
-                username: 'api_consumer',
-                password: 'V3ryS3cr3tPass',
-            });
-            authUser.save(function(error, user) {
-                if (error) { 
-                    reject(error);
-                } else {
-                    swaggerParams['swagger']['params']['auth_payload']['userID'] = user._id
-                    userID = user._id;
-                    resolve();
-                }
-            });
-        } else {
-            resolve();
-        }
-    });
+  return new Promise(function(resolve, reject) {
+    if (_.isUndefined(authUser)) {
+      userFactory.create('user').then(user => {
+        authUser = user;
+        swaggerParams['swagger']['params']['auth_payload']['userID'] = user._id
+        userID = user._id;
+        resolve();
+      }).catch(error => {
+        reject(error);
+      });
+    } else {
+      resolve();
+    }
+  });
 }
 
 app.get('/api/application', function(req, res) {
@@ -152,7 +142,7 @@ app.put('/api/application/:id/unpublish', function(req, res) {
 
 describe('GET /application', () => {
   test('returns a list of non-deleted, public and sysadmin Applications', done => {
-    setupApplications(applications).then((documents) => {
+    setupApplications(applicationsData).then((documents) => {
       request(app).get('/api/application')
       .expect(200)
       .then(response =>{
@@ -195,7 +185,7 @@ describe('GET /application', () => {
 
 describe('GET /application/{id}', () => {
   test('returns a single Application ', done => {
-    setupApplications(applications).then((documents) => {
+    setupApplications(applicationsData).then((documents) => {
       Application.findOne({code: 'SPECIAL'}).exec(function(error, application) {
         let specialAppId = application._id.toString();
         let uri = '/api/application/' + specialAppId;
@@ -220,18 +210,17 @@ describe('GET /application/{id}', () => {
 
 describe('GET /public/application', () => {
   test('returns a list of public Applications', done => {
-    setupApplications(applications).then((documents) => {
+    setupApplications(applicationsData).then((documents) => {
       request(app).get('/api/public/application')
       .expect(200)
       .then(response =>{
         expect(response.body.length).toEqual(2);
 
-        let firstApplication = response.body[0];
+        let firstApplication = _.find(response.body, {code: 'SPECIAL'});
         expect(firstApplication).toHaveProperty('_id');
-        expect(firstApplication.code).toBe('SPECIAL');
         expect(firstApplication['tags']).toEqual(expect.arrayContaining([["public"], ["sysadmin"]]));
 
-        let secondApplication = response.body[1];
+        let secondApplication = _.find(response.body, {code: 'VANILLA'});
         expect(secondApplication).toHaveProperty('_id');
         expect(secondApplication.code).toBe('VANILLA');
         expect(secondApplication['tags']).toEqual(expect.arrayContaining([["public"]]));
@@ -253,7 +242,7 @@ describe('GET /public/application', () => {
 
 describe('GET /public/application/{id}', () => {
   test('returns a single public application ', done => {
-    setupApplications(applications).then((documents) => {
+    setupApplications(applicationsData).then((documents) => {
       Application.findOne({code: 'SPECIAL'}).exec(function(error, application) {
         let specialAppId = application._id.toString();
         let uri = '/api/public/application/' + specialAppId;
@@ -278,7 +267,7 @@ describe('GET /public/application/{id}', () => {
 
 describe('DELETE /application/id', () => {
   test('It soft deletes an application', done => {
-    setupApplications(applications).then((documents) => {
+    setupApplications(applicationsData).then((documents) => {
       Application.findOne({code: 'VANILLA'}).exec(function(error, application) {
         let vanillaAppId = application._id.toString();
         let uri = '/api/application/' + vanillaAppId;

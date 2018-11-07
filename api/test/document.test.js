@@ -1,6 +1,7 @@
 const test_helper = require('./test_helper');
 const app = test_helper.app;
 const mongoose = require('mongoose');
+const documentFactory = require('./factories/document_factory').factory;
 const request = require('supertest');
 let swaggerParams = {
   swagger: {
@@ -81,22 +82,19 @@ app.delete('/api/document/:id', function(req, res) {
   return documentController.protectedDelete(swaggerWithExtraParams, res);
 });
 
-const documents = [
+const documentsData = [
   { displayName: 'Special File', documentFileName: 'special_file.csv', tags: [['public'], ['sysadmin']], isDeleted: false },
   { displayName: 'Vanilla Ice Cream', documentFileName: 'vanilla.docx', tags: [['public']], isDeleted: false },
   { displayName: 'Confidential File', documentFileName: '1099_FBI.docx.gpg',tags: [['sysadmin']], isDeleted: false },
   { displayName: 'Deleted File', documentFileName: 'not_petya.exe', tags: [['public'],['sysadmin']], isDeleted: true },
 ];
 
-function setupDocuments(documents) {
+function setupDocuments(documentsData) {
   return new Promise(function(resolve, reject) {
-    Document.collection.insert(documents, function(error, createdDocuments) {
-      if (error) { 
-        reject(error); 
-      }
-      else {
-        resolve(createdDocuments) 
-      }
+    documentFactory.createMany('document', documentsData).then(documentsArray => {
+      resolve(documentsArray);
+    }).catch(error => {
+      reject(error);
     });
   });
 };
@@ -104,28 +102,25 @@ function setupDocuments(documents) {
 
 describe('GET /document', () => {
   test('returns a list of non-deleted, public and sysadmin documents', done => {
-    setupDocuments(documents).then((documents) => {
+    setupDocuments(documentsData).then((documents) => {
       request(app).get('/api/document')
       .expect(200)
       .then(response =>{
         expect(response.body.length).toEqual(3);
 
-        let firstDocument = response.body[0];
+        let firstDocument = _.find(response.body, {documentFileName: 'special_file.csv'});
         expect(firstDocument).toHaveProperty('_id');
         expect(firstDocument.displayName).toBe('Special File');
-        expect(firstDocument.documentFileName).toBe('special_file.csv');
         expect(firstDocument['tags']).toEqual(expect.arrayContaining([["public"], ["sysadmin"]]));
 
-        let secondDocument = response.body[1];
+        let secondDocument = _.find(response.body, {documentFileName: 'vanilla.docx'});
         expect(secondDocument).toHaveProperty('_id');
         expect(secondDocument.displayName).toBe('Vanilla Ice Cream');
-        expect(secondDocument.documentFileName).toBe('vanilla.docx');
         expect(secondDocument['tags']).toEqual(expect.arrayContaining([["public"]]));
         
-        let secretDocument = response.body[2];
+        let secretDocument = _.find(response.body, {documentFileName: '1099_FBI.docx.gpg'});
         expect(secretDocument).toHaveProperty('_id');
         expect(secretDocument.displayName).toBe('Confidential File');
-        expect(secretDocument.documentFileName).toBe('1099_FBI.docx.gpg');
         expect(secretDocument['tags']).toEqual(expect.arrayContaining([["sysadmin"]]));
         done();
       });
@@ -136,9 +131,9 @@ describe('GET /document', () => {
       request(app).get('/api/document')
       .expect(200)
       .then(response => {
-          expect(response.body.length).toBe(0);
-          expect(response.body).toEqual([]);
-          done();
+        expect(response.body.length).toBe(0);
+        expect(response.body).toEqual([]);
+        done();
       });
   });
 
@@ -149,7 +144,7 @@ describe('GET /document', () => {
 
 describe('GET /document/{id}', () => {
   test('returns a single Document ', done => {
-    setupDocuments(documents).then((documents) => {
+    setupDocuments(documentsData).then((documents) => {
       Document.findOne({displayName: 'Special File'}).exec(function(error, document) {
         let documentId = document._id.toString();
         let uri = '/api/document/' + documentId;
@@ -175,7 +170,7 @@ describe('GET /document/{id}', () => {
 
 describe('GET /public/document', () => {
   test('returns a list of public documents', done => {
-    setupDocuments(documents).then((documents) => {
+    setupDocuments(documentsData).then((documents) => {
       request(app).get('/api/public/document')
       .expect(200)
       .then(response =>{
@@ -212,7 +207,7 @@ describe('GET /public/document', () => {
 
 describe('GET /public/document/{id}', () => {
   test('returns a single public document ', done => {
-    setupDocuments(documents).then((documents) => {
+    setupDocuments(documentsData).then((documents) => {
       Document.findOne({displayName: 'Special File'}).exec(function(error, document) {
         if (error) { 
           console.log(error);
@@ -282,22 +277,23 @@ describe.skip('GET /public/document/{:id}/download', () => {
 
 describe('PUT /document/:id/publish', () => {
   test('publishes a document', done => {
-      let existingDocument = new Document({
+      let existingDocumentData = {
           displayName: 'Existing Document',
           tags: []
-      });
-      existingDocument.save().then(document => {
-          let uri = '/api/document/' + document._id + '/publish';
-          request(app).put(uri)
-          .expect(200)
-          .send({})
-          .then(response => {
-            Document.findOne({displayName: 'Existing Document'}).exec(function(error, updatedDocuemnt) {
-              expect(updatedDocuemnt).toBeDefined();
-              expect(updatedDocuemnt.tags[0]).toEqual(expect.arrayContaining(['public']));
-              done();
-            });
+      };
+      documentFactory.create('document', existingDocumentData)
+      .then(document => {
+        let uri = '/api/document/' + document._id + '/publish';
+        request(app).put(uri)
+        .expect(200)
+        .send({})
+        .then(response => {
+          Document.findOne({displayName: 'Existing Document'}).exec(function(error, updatedDocument) {
+            expect(updatedDocument).toBeDefined();
+            expect(updatedDocument.tags[0]).toEqual(expect.arrayContaining(['public']));
+            done();
           });
+        });
       })
       
   });
@@ -315,22 +311,23 @@ describe('PUT /document/:id/publish', () => {
 
 describe('PUT /document/:id/unpublish', () => {
   test('unpublishes a document', done => {
-      let existingDocument = new Document({
-          displayName: 'Existing Document',
-          tags: [['public']]
-      });
-      existingDocument.save().then(document => {
-          let uri = '/api/document/' + document._id + '/unpublish';
-          request(app).put(uri)
-          .expect(200)
-          .send({})
-          .then(response => {
-              Document.findOne({displayName: 'Existing Document'}).exec(function(error, updatedDocument) {
-                  expect(updatedDocument).toBeDefined();
-                  expect(updatedDocument.tags[0]).toEqual(expect.arrayContaining([]));
-                  done();
-              });
+      let existingDocumentData = {
+        displayName: 'Existing Document',
+        tags: [['public']]
+      };
+      documentFactory.create('document', existingDocumentData)
+      .then(document => {
+        let uri = '/api/document/' + document._id + '/unpublish';
+        request(app).put(uri)
+        .expect(200)
+        .send({})
+        .then(response => {
+          Document.findOne({displayName: 'Existing Document'}).exec(function(error, updatedDocument) {
+            expect(updatedDocument).toBeDefined();
+            expect(updatedDocument.tags[0]).toEqual(expect.arrayContaining([]));
+            done();
           });
+        });
       });
   });
 
@@ -347,7 +344,7 @@ describe('PUT /document/:id/unpublish', () => {
 
 describe('DELETE /document/:id', () => {
   test('It soft deletes a document', done => {
-    setupDocuments(documents).then((documents) => {
+    setupDocuments(documentsData).then((documents) => {
       Document.findOne({displayName: 'Vanilla Ice Cream'}).exec(function(error, document) {
         let vanillaDocumentId = document._id.toString();
         let uri = '/api/document/' + vanillaDocumentId;

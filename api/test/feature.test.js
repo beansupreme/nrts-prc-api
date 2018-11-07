@@ -1,5 +1,7 @@
 const test_helper = require('./test_helper');
 const app = test_helper.app;
+const applicationFactory = require('./factories/application_factory').factory;
+const featureFactory = require('./factories/feature_factory').factory;
 const mongoose = require('mongoose');
 const request = require('supertest');
 
@@ -10,7 +12,7 @@ let swaggerParams = {
         scopes: [ 'sysadmin', 'public' ]
       },
       fields: {
-        value: ['tags', 'properties']
+        value: ['tags', 'properties', 'applicationID']
       }
     }
   }
@@ -20,7 +22,7 @@ let publicSwaggerParams = {
   swagger: {
     params:{
       fields: {
-        value: ['tags', 'properties']
+        value: ['tags', 'properties', 'applicationID']
       }
     }
   }
@@ -33,7 +35,6 @@ const featureController = require('../controllers/feature.js');
 require('../helpers/models/feature');
 require('../helpers/models/application');
 var Feature = mongoose.model('Feature');
-var Application = mongoose.model('Application');
 
 
 const applicationsData = [
@@ -49,16 +50,12 @@ var specialApplicationId,
     deletedApplicationId;
 
    
-function setupApplications(applicationData) {
+function setupApplications(applicationsData) {
   return new Promise(function(resolve, reject) {
-    Application.collection.insert(applicationData, function(error, documents) {
-      if (error) { 
-        console.log('error creating apps')
-        reject(error); 
-      }
-      else {
-        resolve(documents);
-      }
+    applicationFactory.createMany('application', applicationsData).then(applicationArray => {
+      resolve(applicationArray);
+    }).catch(error => {
+      reject(error);
     });
   });
 };
@@ -66,15 +63,11 @@ function setupApplications(applicationData) {
 function setupFeatures() {
   let featureData = buildFeaturesData();
   return new Promise(function(resolve, reject) {
-    Feature.collection.insert(featureData, function(error, documents) {
-      if (error) { 
-        console.log('error creating features')
-        reject(error); 
-      }
-      else {
-        resolve(documents);
-      }
-    });
+    featureFactory.createMany('feature', featureData).then(featuresArray => {
+      resolve(featuresArray);
+    }).catch(error => {
+      reject(error);
+    })
   });
 };
 
@@ -124,13 +117,11 @@ function buildFeaturesData() {
 }
 
 beforeEach(done => {
-  setupApplications(applicationsData).then((mongooseResults) => {
-    insertedIds = mongooseResults.insertedIds;
-    specialApplicationId = insertedIds[0];
-    vanillaApplicationId = insertedIds[1];
-    topSecretApplicationId = insertedIds[2];
-    deletedApplicationId = insertedIds[3];
-    
+  setupApplications(applicationsData).then((applicationsArray) => {
+    specialApplicationId = applicationsArray[0]._id;
+    vanillaApplicationId = applicationsArray[1]._id;
+    topSecretApplicationId = applicationsArray[2]._id;
+    deletedApplicationId = applicationsArray[3]._id;
     done();
   });
 });
@@ -236,7 +227,7 @@ describe('GET /feature', () => {
       .then(response =>{
         expect(response.body.length).toEqual(3);
 
-        let firstFeature = response.body[0];
+        let firstFeature = _.find(response.body, {applicationID: specialApplicationId.toString()});
         expect(firstFeature._id).not.toBeNull();
         
         expect(firstFeature).toHaveProperty('properties');
@@ -244,12 +235,12 @@ describe('GET /feature', () => {
         expect(firstFeatureProps.DISPOSITION_TRANSACTION_SID).toBe(222222);
         expect(firstFeatureProps.TENURE_LOCATION).toBe("1012 Douglas St");
 
-        let secondFeature = response.body[1];
+        let secondFeature = _.find(response.body, {applicationID: vanillaApplicationId.toString()})
         let secondFeatureProps = secondFeature.properties
         expect(secondFeatureProps.DISPOSITION_TRANSACTION_SID).toBe(333333);
         expect(secondFeatureProps.TENURE_LOCATION).toBe("Beacon Hill Ice Cream");
 
-        let secretFeature = response.body[2];
+        let secretFeature = _.find(response.body, {applicationID: topSecretApplicationId.toString()})
         let secretFeatureProps = secretFeature.properties
         expect(secretFeatureProps.DISPOSITION_TRANSACTION_SID).toBe(444444);
         expect(secretFeatureProps.TENURE_LOCATION).toBe('Pacific Naval Fleet');
@@ -493,10 +484,8 @@ describe('POST /feature', () => {
   let newApplicationData = { code: 'NEW_APP', name: 'Fun Application', tags: [['public'],['sysadmin']], isDeleted: false };
   let newApplicationId;
   beforeEach(done => {
-    setupApplications([newApplicationData]).then((mongooseResults) => {
-      insertedIds = mongooseResults.insertedIds;
-      newApplicationId = insertedIds[0];
-      
+    setupApplications([newApplicationData]).then((applicationsArray) => {
+      newApplicationId = applicationsArray[0].id;
       done();
     });
   });
@@ -560,24 +549,21 @@ describe('PUT /feature/:id', () => {
   let existingApplicationId;
 
   beforeEach(done => {
-    setupApplications([existingApplicationData]).then((mongooseResults) => {
-      insertedIds = mongooseResults.insertedIds;
-      existingApplicationId = insertedIds[0];
-      
+    setupApplications([existingApplicationData]).then((applicationsArray) => {
+      existingApplicationId = applicationsArray[0].id;
       done();
     });
   });
 
   test('updates an feature', done => {
-    let existingFeature = new Feature({
+    let featureData = {
       applicationID: existingApplicationId,
       properties: {
         DISPOSITION_TRANSACTION_SID: 999999,
         TENURE_STATUS: "ACCEPTED",
         TENURE_LOCATION: "Freshiis Smelly Food",
       }
-    });
-    
+    };
     let updateData = {
       properties: {
         TENURE_STATUS: "REJECTED",
@@ -585,8 +571,8 @@ describe('PUT /feature/:id', () => {
       }
     };
 
-    existingFeature.save().then(feature => {
-      let uri = '/api/feature/' + feature._id;
+    featureFactory.create('feature', featureData).then(featureObj => {
+      let uri = '/api/feature/' + featureObj._id;
       request(app).put(uri, updateData)
       .send(updateData)
       .then(response => {
@@ -612,20 +598,21 @@ describe('PUT /feature/:id', () => {
   });
 
   test('does not allow updating tags', done => {
-    let existingFeature = new Feature({
+    let featureData = {
       applicationID: existingApplicationId,
       tags: [['public']]
-    });
+    };
+
     let updateData = {
       tags: [['public'], ['sysadmin']]
     };
-    existingFeature.save().then(feature => {
+    featureFactory.create('feature', featureData).then(feature => {
       let uri = '/api/feature/' + feature._id;
       request(app).put(uri, updateData)
       .send(updateData)
       .then(response => {
-        Feature.findById(existingFeature._id).exec(function(error, feature) {
-          expect(feature.tags.length).toEqual(1)
+        Feature.findById(feature._id).exec(function(error, updatedFeature) {
+          expect(updatedFeature.tags.length).toEqual(1)
           done();
         });
       });
@@ -634,43 +621,31 @@ describe('PUT /feature/:id', () => {
 });
 
 describe('PUT /application/:id/publish', () => {
-  let existingApplicationData = { code: 'NEW_APP', name: 'Old old application', tags: [['public'],['sysadmin']], isDeleted: false };
   let existingApplicationId;
-
   beforeEach(done => {
-    setupApplications([existingApplicationData]).then((mongooseResults) => {
-      insertedIds = mongooseResults.insertedIds;
-      existingApplicationId = insertedIds[0];
-      
+    setupApplications([{ code: 'NEW_APP'}]).then((applicationsArray) => {
+      existingApplicationId = applicationsArray[0].id;
       done();
     });
   });
-
-  let existingFeature; 
-
-  beforeEach(() => {
-    existingFeature = new Feature({
-      applicationID: existingApplicationId,
-      properties: {
-        DISPOSITION_TRANSACTION_SID: 999999,
-        TENURE_STATUS: "ACCEPTED",
-        TENURE_LOCATION: "Freshiis Smelly Food",
-      }
-    });
-    return existingFeature.save();
-  });
   
   test('publishes a feature', done => {
-    let uri = '/api/feature/' + existingFeature._id + '/publish';
-    request(app).put(uri)
-    .expect(200)
-    .send({})
-    .then(response => {
-      Feature.findById(existingFeature._id).exec(function(error, feature) {
-        expect(feature).toBeDefined();
-        expect(feature).not.toBeNull();
-        expect(feature.tags[0]).toEqual(expect.arrayContaining(['public']));
-        done();
+    let unpublishedFeatureData = {
+      applicationID: existingApplicationId,
+      tags: []
+    }
+    featureFactory.create('feature', unpublishedFeatureData).then(feature => {
+      let uri = '/api/feature/' + feature._id + '/publish';
+      request(app).put(uri)
+      .expect(200)
+      .send({})
+      .then(response => {
+        Feature.findById(feature._id).exec(function(error, updatedFeature) {
+          expect(updatedFeature).toBeDefined();
+          expect(updatedFeature).not.toBeNull();
+          expect(updatedFeature.tags[0]).toEqual(expect.arrayContaining(['public']));
+          done();
+        });
       });
     });
   });
@@ -687,41 +662,32 @@ describe('PUT /application/:id/publish', () => {
 });
 
 describe('PUT /feature/:id/unpublish', () => {
-  let existingApplicationData = { code: 'NEW_APP', name: 'Old old application', tags: [['public'],['sysadmin']], isDeleted: false };
   let existingApplicationId;
 
   beforeEach(done => {
-    setupApplications([existingApplicationData]).then((mongooseResults) => {
-      insertedIds = mongooseResults.insertedIds;
-      existingApplicationId = insertedIds[0];
-      
+    setupApplications([{ code: 'EXISTING_APP'}]).then((applicationsArray) => {
+      existingApplicationId = applicationsArray[0].id;
       done();
     });
   });
 
-  beforeEach(() => {
-    existingFeature = new Feature({
-      applicationID: existingApplicationId,
-      properties: {
-        DISPOSITION_TRANSACTION_SID: 999999,
-        TENURE_STATUS: "ACCEPTED",
-        TENURE_LOCATION: "Freshiis Smelly Food",
-      },
-      tags: [['public']]
-    });
-    return existingFeature.save();
-  });
-  
   test('unpublishes a feature', done => {
-    let uri = '/api/feature/' + existingFeature._id + '/unpublish';
-    request(app).put(uri)
-    .expect(200)
-    .send({})
-    .then(response => {
-      Feature.findById(existingFeature._id).exec(function(error, feature) {
-        expect(feature).toBeDefined();
-        expect(feature.tags[0]).toEqual(expect.arrayContaining([]));
-        done();
+    let publicFeatureData = {
+      applicationID: existingApplicationId,
+      tags: [['public']]
+    };
+    
+    featureFactory.create('feature', publicFeatureData).then(feature => {
+      let uri = '/api/feature/' + feature._id + '/unpublish';
+      request(app).put(uri)
+      .expect(200)
+      .send({})
+      .then(response => {
+        Feature.findById(feature.id).exec(function(error, updatedFeature) {
+          expect(updatedFeature).toBeDefined();
+          expect(updatedFeature.tags[0]).toEqual(expect.arrayContaining([]));
+          done();
+        });
       });
     });
   });
