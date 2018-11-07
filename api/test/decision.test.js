@@ -1,5 +1,6 @@
 const test_helper = require('./test_helper');
 const app = test_helper.app;
+const decisionFactory = require('./factories/decision_factory').factory;
 const mongoose = require('mongoose');
 const request = require('supertest');
 let swaggerParams = {
@@ -89,45 +90,42 @@ app.delete('/api/decision/:id', function(req, res) {
   return decisionController.protectedDelete(swaggerWithExtraParams, res);
 });
 
-const decisions = [
+const decisionsData = [
   { code: 'SPECIAL', name: 'Special Decision', description: 'We have decided to save the environment', tags: [['public'], ['sysadmin']], isDeleted: false },
   { code: 'VANILLA', name: 'Vanilla Ice Cream', description: 'Ice cream store will be built', tags: [['public']], isDeleted: false },
   { code: 'TOP_SECRET', name: 'Confidential Decision', description: 'No comment',tags: [['sysadmin']], isDeleted: false },
   { code: 'DELETED', name: 'Deleted Decision', description: 'Trolling for suckers', tags: [['public'],['sysadmin']], isDeleted: true },
 ];
 
-function setupDecisions(decisions) {
+function setupDecisions(decisionsData) {
   return new Promise(function(resolve, reject) {
-      Decision.collection.insert(decisions, function(error, documents) {
-          if (error) { 
-              reject(error); 
-          }
-          else {
-              resolve(documents) 
-          }
-      });
+    decisionFactory.createMany('decision', decisionsData).then(decisionsArray => {
+      resolve(decisionsArray);
+    }).catch(error => {
+      reject(error);
+    });
   });
-};
+}
 
 describe('GET /decision', () => {
   test('returns a list of non-deleted, public and sysadmin decision', done => {
-    setupDecisions(decisions).then((documents) => {
+    setupDecisions(decisionsData).then((documents) => {
       request(app).get('/api/decision')
       .expect(200)
       .then(response =>{
         expect(response.body.length).toEqual(3);
 
-        let firstDecision = response.body[0];
+        let firstDecision = _.find(response.body, {code: 'SPECIAL'});
         expect(firstDecision).toHaveProperty('_id');
         expect(firstDecision.description).toBe('We have decided to save the environment');
         expect(firstDecision['tags']).toEqual(expect.arrayContaining([["public"], ["sysadmin"]]));
 
-        let secondDecision = response.body[1];
+        let secondDecision = _.find(response.body, {code: 'VANILLA'});
         expect(secondDecision).toHaveProperty('_id');
         expect(secondDecision.description).toBe('Ice cream store will be built');
         expect(secondDecision['tags']).toEqual(expect.arrayContaining([["public"]]));
 
-        let secretDecision = response.body[2];
+        let secretDecision = _.find(response.body, {code: 'TOP_SECRET'});
         expect(secretDecision).toHaveProperty('_id');
         expect(secretDecision.description).toBe('No comment');
         expect(secretDecision['tags']).toEqual(expect.arrayContaining([["sysadmin"]]));
@@ -153,7 +151,7 @@ describe('GET /decision', () => {
 
 describe('GET /decision/{id}', () => {
   test('returns a single Decision ', done => {
-    setupDecisions(decisions).then((documents) => {
+    setupDecisions(decisionsData).then((documents) => {
       Decision.findOne({code: 'SPECIAL'}).exec(function(error, decision) {
         let decisionId = decision._id.toString();
         let uri = '/api/decision/' + decisionId;
@@ -178,7 +176,7 @@ describe('GET /decision/{id}', () => {
 
 describe('GET /public/decision', () => {
   test('returns a list of public decisions', done => {
-    setupDecisions(decisions).then((documents) => {
+    setupDecisions(decisionsData).then((documents) => {
       request(app).get('/api/public/decision')
       .expect(200)
       .then(response =>{
@@ -211,7 +209,7 @@ describe('GET /public/decision', () => {
 
 describe('GET /public/decision/{id}', () => {
   test('returns a single public decision ', done => {
-    setupDecisions(decisions).then((documents) => {
+    setupDecisions(decisionsData).then((documents) => {
       Decision.findOne({code: 'SPECIAL'}).exec(function(error, decision) {
         if (error) { 
           console.log(error);
@@ -359,8 +357,7 @@ describe('PUT /decision/:id/publish', () => {
               done();
             });
           });
-      })
-      
+      });
   });
 
   test('404s if the decision does not exist', done => {
@@ -409,7 +406,7 @@ describe('PUT /decision/:id/unpublish', () => {
 
 describe('DELETE /decision/id', () => {
   test('It soft deletes a decision', done => {
-    setupDecisions(decisions).then((documents) => {
+    setupDecisions(decisionsData).then((documents) => {
       Decision.findOne({code: 'VANILLA'}).exec(function(error, decision) {
         let vanillaDecisionId = decision._id.toString();
         let uri = '/api/decision/' + vanillaDecisionId;
