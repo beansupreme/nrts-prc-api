@@ -9,11 +9,11 @@ const tantalisResponse = require('./fixtures/tantalis_response.json');
 
 let publicSwaggerParams = {
   swagger: {
-      params:{
-        fields: {
-          value: []
-        }
+    params: {
+      fields: {
+        value: []
       }
+    }
   }
 };
 
@@ -25,35 +25,35 @@ require('../helpers/models/feature');
 var Application = mongoose.model('Application');
 var Feature = mongoose.model('Feature');
 
-app.get('/api/public/search/bcgw/getClientsInfoByDispositionId/:id', function(req, res) { 
+app.get('/api/public/search/bcgw/getClientsInfoByDispositionId/:id', function(req, res) {
   let swaggerWithExtraParams = _.cloneDeep(publicSwaggerParams);
   swaggerWithExtraParams['swagger']['params']['dtId'] = {
-      value: req.params.id
+    value: req.params.id
   };
   return searchController.publicGetClientsInfoByDispositionId(swaggerWithExtraParams, res);
 });
 
-app.get('/api/public/search/bcgw/crownLandsId/:id', function(req, res) { 
+app.get('/api/public/search/bcgw/crownLandsId/:id', function(req, res) {
   let swaggerWithExtraParams = _.cloneDeep(publicSwaggerParams);
   swaggerWithExtraParams['swagger']['params']['crownLandsId'] = {
-      value: req.params.id
+    value: req.params.id
   };
-  
+
   return searchController.publicGetBCGW(swaggerWithExtraParams, res);
 });
 
-app.get('/api/public/search/dispositionTransactionId/:id', function(req, res) { 
+app.get('/api/public/search/dispositionTransactionId/:id', function(req, res) {
   let swaggerWithExtraParams = _.cloneDeep(publicSwaggerParams);
   swaggerWithExtraParams['swagger']['params']['dtId'] = {
-      value: req.params.id
+    value: req.params.id
   };
   return searchController.publicGetDispositionTransactionId(swaggerWithExtraParams, res);
 });
 
-app.get('/api/public/search/bcgw/dispositionTransactionId/:id', function(req, res) { 
+app.get('/api/public/search/bcgw/dispositionTransactionId/:id', function(req, res) {
   let swaggerWithExtraParams = _.cloneDeep(publicSwaggerParams);
   swaggerWithExtraParams['swagger']['params']['dtId'] = {
-      value: req.params.id
+    value: req.params.id
   };
   return searchController.publicGetBCGWDispositionTransactionId(swaggerWithExtraParams, res);
 });
@@ -65,24 +65,24 @@ describe('GET /api/public/search/bcgw/getClientsInfoByDispositionId', () => {
   var argGis = nock(arcGisDomain);
   let dispositionId = 666666;
   let urlEncodedDispositionId = `%27${dispositionId}%27`;
-  
+
   describe('When the arcgis call returns successfully', () => {
     beforeEach(() => {
       argGis.get(searchPath + urlEncodedDispositionId)
-      .reply(200, arcGisResponse);
+        .reply(200, arcGisResponse);
     });
-  
+
     test('returns the features data from the search', done => {
       request(app).get('/api/public/search/bcgw/getClientsInfoByDispositionId/' + dispositionId)
-      .expect(200).then(response => {
-        expect(response.body.length).toBe(2);
-        let firstFeature = response.body[0];
-        expect(firstFeature).toHaveProperty('DISPOSITION_TRANSACTION_SID');
-        expect(firstFeature).toHaveProperty('CITY');
-        expect(firstFeature).toHaveProperty('INTERESTED_PARTY_SID');
-        done();
-      });
-    });  
+        .expect(200).then(response => {
+          expect(response.body.length).toBe(2);
+          let firstFeature = response.body[0];
+          expect(firstFeature).toHaveProperty('DISPOSITION_TRANSACTION_SID');
+          expect(firstFeature).toHaveProperty('CITY');
+          expect(firstFeature).toHaveProperty('INTERESTED_PARTY_SID');
+          done();
+        });
+    });
   });
 
   describe('When the arcgis call returns with an error', () => {
@@ -91,44 +91,44 @@ describe('GET /api/public/search/bcgw/getClientsInfoByDispositionId', () => {
     };
     beforeEach(() => {
       argGis.get(searchPath + urlEncodedDispositionId)
-      .reply(400, arcGisErrorResponse);
+        .reply(400, arcGisErrorResponse);
     });
 
     test('returns a 400 if the arcgis response status is not 200', done => {
       request(app).get('/api/public/search/bcgw/getClientsInfoByDispositionId/' + dispositionId)
-      .expect(400)
-      .then(response => {
-        expect(response.body).toEqual("400 {\"msg\":\"Beep boop, something went wrong\"}")
-        done();
-      });
+        .expect(400)
+        .then(response => {
+          expect(response.body).toEqual("400 {\"msg\":\"Beep boop, something went wrong\"}")
+          done();
+        });
     });
   });
 
   describe('when the arcgis call returns 200, but error in body', () => {
     let arcGisErrorResponse = {
-      "error":{
-        "code":400,
-        "message":"Invalid or missing input parameters.",
-        "details":[]
+      "error": {
+        "code": 400,
+        "message": "Invalid or missing input parameters.",
+        "details": []
       }
     };
 
     beforeEach(() => {
       argGis.get(searchPath + urlEncodedDispositionId)
-      .reply(200, arcGisErrorResponse);
+        .reply(200, arcGisErrorResponse);
     });
 
     // TODO: shouldn't this test read more like: 'returns a 400 if the arcgis response body is unsuccessful'
     // Returns an empty array if response body is invalid
     test('returns an empty array if the arcgis response body is unsuccessful', done => {
       request(app).get('/api/public/search/bcgw/getClientsInfoByDispositionId/' + dispositionId)
-      // .expect(400)
-      .expect(200)
-      .then(response => {
-        // expect(response.body).toBe(arcGisErrorResponse);
-        expect(response.body).toEqual([]);
-        done();
-      });
+        // .expect(400)
+        .expect(200)
+        .then(response => {
+          // expect(response.body).toBe(arcGisErrorResponse);
+          expect(response.body).toEqual([]);
+          done();
+        });
     });
   });
 });
@@ -140,25 +140,25 @@ describe('GET /api/public/search/bcgw/crownLandsId/ ', () => {
   let crownlandsId = 7777;
   // crownlands id with 7 digits
   let paddedCrownlandsId = `%27000${crownlandsId}%27`;
-  
+
   describe('when bcgw call is successful', () => {
     beforeEach(() => {
       bcgw.get(searchPath + paddedCrownlandsId)
-      .reply(200, crownlandsResponse);
+        .reply(200, crownlandsResponse);
     });
 
     test('returns the features data from the search', done => {
       request(app).get('/api/public/search/bcgw/crownLandsId/' + crownlandsId)
-      .expect(200)
-      .then(response => {
-        expect(response.body.features).toBeDefined();
-        let firstFeature = response.body.features[0];
-        expect(firstFeature).toHaveProperty('properties')
-        expect(firstFeature.properties).toHaveProperty('DISPOSITION_TRANSACTION_SID');
-        expect(firstFeature.properties).toHaveProperty('CROWN_LANDS_FILE');
-        expect(firstFeature.properties).toHaveProperty('TENURE_STATUS');
-        done();
-      });
+        .expect(200)
+        .then(response => {
+          expect(response.body.features).toBeDefined();
+          let firstFeature = response.body.features[0];
+          expect(firstFeature).toHaveProperty('properties')
+          expect(firstFeature.properties).toHaveProperty('DISPOSITION_TRANSACTION_SID');
+          expect(firstFeature.properties).toHaveProperty('CROWN_LANDS_FILE');
+          expect(firstFeature.properties).toHaveProperty('TENURE_STATUS');
+          done();
+        });
     });
 
     test('it adds the SID to the response sidsFound property if there is a matching application in the db', done => {
@@ -168,12 +168,12 @@ describe('GET /api/public/search/bcgw/crownLandsId/ ', () => {
       });
       existingApplication.save().then(() => {
         request(app).get('/api/public/search/bcgw/crownLandsId/' + crownlandsId)
-        .expect(200)
-        .then(response => {
-          expect(response.body.sidsFound).toBeDefined();
-          expect(response.body.sidsFound).toEqual([crownlandSID.toString()]);
-          done();
-        });
+          .expect(200)
+          .then(response => {
+            expect(response.body.sidsFound).toBeDefined();
+            expect(response.body.sidsFound).toEqual([crownlandSID.toString()]);
+            done();
+          });
       });
     });
   });
@@ -184,42 +184,42 @@ describe('GET /api/public/search/bcgw/crownLandsId/ ', () => {
     };
     beforeEach(() => {
       bcgw.get(searchPath + paddedCrownlandsId)
-      .reply(400, bcgwErrorResponse);
+        .reply(400, bcgwErrorResponse);
     });
 
     test('returns a 400 if the bcgw response status is not 200', done => {
       request(app).get('/api/public/search/bcgw/crownLandsId/' + crownlandsId)
-      .expect(400)
-      .then(response => {
-        expect(response.body).toEqual("400 {\"msg\":\"Beep boop, something went wrong\"}")
-        done();
-      });
+        .expect(400)
+        .then(response => {
+          expect(response.body).toEqual("400 {\"msg\":\"Beep boop, something went wrong\"}")
+          done();
+        });
     });
   });
 
   describe('when the bcgw call returns 200, but error in body', () => {
     let bcgwErrorResponse = {
-      "error":{
-        "code":400,
-        "message":"Invalid or missing input parameters.",
-        "details":[]
+      "error": {
+        "code": 400,
+        "message": "Invalid or missing input parameters.",
+        "details": []
       }
     };
 
     beforeEach(() => {
       bcgw.get(searchPath + paddedCrownlandsId)
-      .reply(200, bcgwErrorResponse);
+        .reply(200, bcgwErrorResponse);
     });
 
     test('returns an empty array if the arcgis response body is unsuccessful', done => {
       request(app).get('/api/public/search/bcgw/crownLandsId/' + crownlandsId)
-      // .expect(400)
-      .expect(200)
-      .then(response => {
-        // expect(response.body).toBe(arcGisErrorResponse);
-        expect(response.body).toMatchObject(bcgwErrorResponse);
-        done();
-      });
+        // .expect(400)
+        .expect(200)
+        .then(response => {
+          // expect(response.body).toBe(arcGisErrorResponse);
+          expect(response.body).toMatchObject(bcgwErrorResponse);
+          done();
+        });
     });
   });
 
@@ -236,17 +236,17 @@ describe('GET /api/public/search/dispositionTransactionId', () => {
     });
     existingFeature.save().then(() => {
       request(app).get('/api/public/search/dispositionTransactionId/' + dispositionId)
-      .expect(200)
-      .then(response => {
+        .expect(200)
+        .then(response => {
 
-        expect(response.body).toBeDefined();
-        expect(response.body).not.toBeNull();
-        expect(response.body).toHaveProperty('crs');
-        expect(response.body).toHaveProperty('features');
-        expect(response.body.features.length).toBe(1);
-        expect(response.body.features[0]._id).toBe(existingFeature._id.toString());
-        done();
-      });
+          expect(response.body).toBeDefined();
+          expect(response.body).not.toBeNull();
+          expect(response.body).toHaveProperty('crs');
+          expect(response.body).toHaveProperty('features');
+          expect(response.body.features.length).toBe(1);
+          expect(response.body.features[0]._id).toBe(existingFeature._id.toString());
+          done();
+        });
     });
   });
 });
@@ -257,25 +257,25 @@ describe('GET /api/public/search/bcgw/dispositionTransactionId', () => {
   var bcgw = nock(bcgwDomain);
   let dispositionId = 666666;
   let urlEncodedDispositionId = `%27${dispositionId}%27`;
-  
+
 
   describe('When the bcgw call returns successfully', () => {
     beforeEach(() => {
       bcgw.get(searchPath + urlEncodedDispositionId)
-      .reply(200, tantalisResponse);
+        .reply(200, tantalisResponse);
     });
-  
+
     test('returns the features data from the search', done => {
       request(app).get('/api/public/search/bcgw/dispositionTransactionId/' + dispositionId)
-      .expect(200)
-      .then(response => {
-        let firstFeature = response.body.features[0];
-        expect(firstFeature).toHaveProperty('properties')
-        expect(firstFeature.properties).toHaveProperty('DISPOSITION_TRANSACTION_SID');
-        expect(firstFeature.properties).toHaveProperty('CROWN_LANDS_FILE');
-        expect(firstFeature.properties).toHaveProperty('TENURE_STATUS');
-        done();
-      });
+        .expect(200)
+        .then(response => {
+          let firstFeature = response.body.features[0];
+          expect(firstFeature).toHaveProperty('properties')
+          expect(firstFeature.properties).toHaveProperty('DISPOSITION_TRANSACTION_SID');
+          expect(firstFeature.properties).toHaveProperty('CROWN_LANDS_FILE');
+          expect(firstFeature.properties).toHaveProperty('TENURE_STATUS');
+          done();
+        });
     });
 
     test('it adds the SID to the response sidsFound property if there is a matching application in the db', done => {
@@ -285,12 +285,12 @@ describe('GET /api/public/search/bcgw/dispositionTransactionId', () => {
       });
       existingApplication.save().then(() => {
         request(app).get('/api/public/search/bcgw/dispositionTransactionId/' + dispositionId)
-        .expect(200)
-        .then(response => {
-          expect(response.body.sidsFound).toBeDefined();
-          expect(response.body.sidsFound).toEqual([dispositionTransactionId.toString()]);
-          done();
-        });
+          .expect(200)
+          .then(response => {
+            expect(response.body.sidsFound).toBeDefined();
+            expect(response.body.sidsFound).toEqual([dispositionTransactionId.toString()]);
+            done();
+          });
       });
     });
   });
@@ -301,43 +301,43 @@ describe('GET /api/public/search/bcgw/dispositionTransactionId', () => {
     };
     beforeEach(() => {
       return bcgw.get(searchPath + urlEncodedDispositionId)
-      .reply(400, bcgwErrorResponse);
+        .reply(400, bcgwErrorResponse);
     });
 
     test('returns a 400 if the arcgis response status is not 200', done => {
       request(app).get('/api/public/search/bcgw/dispositionTransactionId/' + dispositionId)
-      .expect(400)
-      .then(response => {
-        expect(response.body).toEqual("400 {\"msg\":\"Beep boop, something went wrong\"}")
-        done();
-      });
+        .expect(400)
+        .then(response => {
+          expect(response.body).toEqual("400 {\"msg\":\"Beep boop, something went wrong\"}")
+          done();
+        });
     });
   });
 
   describe('when the bcgw call returns 200, but error in body', () => {
     let bcgwErrorResponse = {
-      "error":{
-        "code":400,
-        "message":"Invalid or missing input parameters.",
-        "details":[]
+      "error": {
+        "code": 400,
+        "message": "Invalid or missing input parameters.",
+        "details": []
       }
     };
 
     beforeEach(() => {
       return bcgw.get(searchPath + urlEncodedDispositionId)
-      .reply(200, bcgwErrorResponse);
+        .reply(200, bcgwErrorResponse);
     });
 
     // TODO: shouldn't this test read more like: 'returns a 400 if the bcgw response body is unsuccessful'
     test('returns an empty array if the bcgw response body is unsuccessful', done => {
       request(app).get('/api/public/search/bcgw/dispositionTransactionId/' + dispositionId)
-      // .expect(400)
-      .expect(200)
-      .then(response => {
-        // expect(response.body).toBe(bcgwErrorResponse);
-        expect(response.body).toMatchObject(bcgwErrorResponse);
-        done();
-      });
+        // .expect(400)
+        .expect(200)
+        .then(response => {
+          // expect(response.body).toBe(bcgwErrorResponse);
+          expect(response.body).toMatchObject(bcgwErrorResponse);
+          done();
+        });
     });
   });
 });
