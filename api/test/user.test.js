@@ -8,46 +8,31 @@ const userController = require('../controllers/user.js');
 const _ = require('lodash');
 require('../helpers/models/user');
 var User = mongoose.model('User');
+const fieldNames = [];
 
-const swaggerParams = {
-  swagger: {
-    params: {
-      auth_payload: {
-        scopes: ['sysadmin', 'public']
-      },
-      fields: {}
-    }
-  }
-};
+function paramsWithUserId(req) {
+  let params = test_helper.buildParams({'userId': req.params.id});
+  return test_helper.createSwaggerParams(fieldNames, params);
+}
 
 app.get('/api/user', function(req, res) {
+  let swaggerParams = test_helper.createSwaggerParams(fieldNames);
   return userController.protectedGet(swaggerParams, res);
 });
 app.get('/api/user/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['userId'] = {
-    value: req.params.id
-  };
-  return userController.protectedGet(swaggerWithExtraParams, res);
+  return userController.protectedGet(paramsWithUserId(req ), res);
 });
 
 app.post('/api/user', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['user'] = {
-    value: req.body
-  };
-  return userController.protectedPost(swaggerWithExtraParams, res);
+  let extraFields = test_helper.buildParams({'user': req.body});
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields);
+  return userController.protectedPost(params, res);
 });
 
 app.put('/api/user/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['userId'] = {
-    value: req.params.id
-  };
-  swaggerWithExtraParams['swagger']['params']['user'] = {
-    value: req.body
-  };
-  return userController.protectedPut(swaggerWithExtraParams, res);
+  let extraFields = test_helper.buildParams({'userId': req.params.id, 'user': req.body});
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields);
+  return userController.protectedPut(params, res);
 });
 
 function setupUsers(usersData) {

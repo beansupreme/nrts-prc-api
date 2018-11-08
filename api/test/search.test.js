@@ -6,18 +6,14 @@ const nock = require('nock');
 const arcGisResponse = require('./fixtures/arcgis_response.json');
 const crownlandsResponse = require('./fixtures/crownlands_response.json');
 const tantalisResponse = require('./fixtures/tantalis_response.json');
-
-let publicSwaggerParams = {
-  swagger: {
-    params: {
-      fields: {
-        value: []
-      }
-    }
-  }
-};
+const fieldNames = [];
 
 const _ = require('lodash');
+
+function publicParamsWithDtId(req) {
+  let params = test_helper.buildParams({'dtId': req.params.id});
+  return test_helper.createPublicSwaggerParams(fieldNames, params);
+}
 
 const searchController = require('../controllers/search.js');
 require('../helpers/models/application');
@@ -26,36 +22,21 @@ var Application = mongoose.model('Application');
 var Feature = mongoose.model('Feature');
 
 app.get('/api/public/search/bcgw/getClientsInfoByDispositionId/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(publicSwaggerParams);
-  swaggerWithExtraParams['swagger']['params']['dtId'] = {
-    value: req.params.id
-  };
-  return searchController.publicGetClientsInfoByDispositionId(swaggerWithExtraParams, res);
+  return searchController.publicGetClientsInfoByDispositionId(publicParamsWithDtId(req), res);
 });
 
 app.get('/api/public/search/bcgw/crownLandsId/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(publicSwaggerParams);
-  swaggerWithExtraParams['swagger']['params']['crownLandsId'] = {
-    value: req.params.id
-  };
-
-  return searchController.publicGetBCGW(swaggerWithExtraParams, res);
+  let extraFields = test_helper.buildParams({'crownLandsId': req.params.id});
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields);
+  return searchController.publicGetBCGW(params, res);
 });
 
 app.get('/api/public/search/dispositionTransactionId/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(publicSwaggerParams);
-  swaggerWithExtraParams['swagger']['params']['dtId'] = {
-    value: req.params.id
-  };
-  return searchController.publicGetDispositionTransactionId(swaggerWithExtraParams, res);
+  return searchController.publicGetDispositionTransactionId(publicParamsWithDtId(req), res);
 });
 
 app.get('/api/public/search/bcgw/dispositionTransactionId/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(publicSwaggerParams);
-  swaggerWithExtraParams['swagger']['params']['dtId'] = {
-    value: req.params.id
-  };
-  return searchController.publicGetBCGWDispositionTransactionId(swaggerWithExtraParams, res);
+  return searchController.publicGetBCGWDispositionTransactionId(publicParamsWithDtId(req), res);
 });
 
 

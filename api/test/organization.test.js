@@ -11,26 +11,48 @@ require('../helpers/models/organization');
 require('../helpers/models/user');
 var Organization = mongoose.model('Organization');
 var User = mongoose.model('User');
-
-let swaggerParams = {
-  swagger: {
-    params: {
-      auth_payload: {
-        scopes: ['sysadmin', 'public'],
-        userID: null
-      },
-      fields: {}
-    }
-  }
-};
 var authUser;
+const fieldNames = [];
+
+function paramsWithOrgId(req) {
+  let params = test_helper.buildParams({'orgId': req.params.id});
+  return test_helper.createSwaggerParams(fieldNames, params);
+}
+
+app.get('/api/organization', function(req, res) {
+  let swaggerParams = test_helper.createSwaggerParams(fieldNames);
+  return organizationController.protectedGet(swaggerParams, res);
+});
+
+app.get('/api/organization/:id', function(req, res) {
+  return organizationController.protectedGet(paramsWithOrgId(req), res);
+});
+
+app.post('/api/organization', function(req, res) {
+  let extraFields = test_helper.buildParams({'org': req.body});
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields, userID);
+  return organizationController.protectedPost(params, res);
+});
+
+app.put('/api/organization/:id', function(req, res) {
+  let extraFields = test_helper.buildParams({'orgId': req.params.id, 'org': req.body});
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields);
+  return organizationController.protectedPut(params, res);
+});
+
+app.put('/api/organization/:id/publish', function(req, res) {
+  return organizationController.protectedPublish(paramsWithOrgId(req), res);
+});
+
+app.put('/api/organization/:id/unpublish', function(req, res) {
+  return organizationController.protectedUnPublish(paramsWithOrgId(req), res);
+});
 
 function setupUser() {
   return new Promise(function(resolve, reject) {
     if (_.isUndefined(authUser)) {
       userFactory.create('user').then(user => {
         authUser = user;
-        swaggerParams['swagger']['params']['auth_payload']['userID'] = user._id
         userID = user._id;
         resolve();
       }).catch(error => {
@@ -41,53 +63,6 @@ function setupUser() {
     }
   });
 }
-
-app.get('/api/organization', function(req, res) {
-  return organizationController.protectedGet(swaggerParams, res);
-});
-
-app.get('/api/organization/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['orgId'] = {
-    value: req.params.id
-  };
-  return organizationController.protectedGet(swaggerWithExtraParams, res);
-});
-
-app.post('/api/organization', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['org'] = {
-    value: req.body
-  };
-  return organizationController.protectedPost(swaggerWithExtraParams, res);
-});
-
-app.put('/api/organization/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['orgId'] = {
-    value: req.params.id
-  };
-  swaggerWithExtraParams['swagger']['params']['org'] = {
-    value: req.body
-  };
-  return organizationController.protectedPut(swaggerWithExtraParams, res);
-});
-
-app.put('/api/organization/:id/publish', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['orgId'] = {
-    value: req.params.id
-  };
-  return organizationController.protectedPublish(swaggerWithExtraParams, res);
-});
-
-app.put('/api/organization/:id/unpublish', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['orgId'] = {
-    value: req.params.id
-  };
-  return organizationController.protectedUnPublish(swaggerWithExtraParams, res);
-});
 
 function setupOrganizations(organizations) {
   return new Promise(function(resolve, reject) {
