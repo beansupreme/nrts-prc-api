@@ -87,15 +87,13 @@ describe('GET /Organization', () => {
       request(app).get('/api/organization').expect(200).then(response => {
         expect(response.body.length).toEqual(2);
 
-        let firstOrg = response.body[0];
+        let firstOrg = _.find(response.body, {code: 'SPECIAL'});
         expect(firstOrg).toHaveProperty('_id');
-        expect(firstOrg.code).toBe('SPECIAL');
         expect(firstOrg.name).toBe('Special Organization')
         // expect(firstOrg['tags']).toEqual(expect.arrayContaining(["public"], ["sysadmin"]));
 
-        let secondOrg = response.body[1];
+        let secondOrg = _.find(response.body, {code: 'VANILLA'});
         expect(secondOrg).toHaveProperty('_id');
-        expect(secondOrg.code).toBe('VANILLA');
         expect(secondOrg.name).toBe('Vanilla Ice Cream')
         // expect(secondOrg['tags']).toEqual(expect.arrayContaining(["public"]));
         done()

@@ -8,7 +8,7 @@ const userController = require('../controllers/user.js');
 const _ = require('lodash');
 require('../helpers/models/user');
 var User = mongoose.model('User');
-const fieldNames = [];
+const fieldNames = ['username'];
 
 function paramsWithUserId(req) {
   let params = test_helper.buildParams({'userId': req.params.id});
@@ -47,10 +47,10 @@ function setupUsers(usersData) {
 
 const usersData = [
   {
-    username: 'admin1', password: 'v3rys3cr3t', roles: ['sysadmin', 'public']
+    username: 'admin1', displayName: 'Mr Admin', password: 'v3rys3cr3t', roles: ['sysadmin', 'public']
   },
   {
-    username: 'joeschmo1', password: 'n0ts3cr3t', roles: ['public']
+    username: 'joeschmo1', displayName: 'Joe Schmo', password: 'n0ts3cr3t', roles: ['public']
   }
 ];
 
@@ -62,12 +62,14 @@ describe('GET /User', () => {
         request(app).get('/api/user').expect(200).then(response => {
           expect(response.body.length).toEqual(2);
 
-          let firstUser = response.body[0];
+          let firstUser = _.find(response.body, {username: 'admin1'});
           expect(firstUser).toHaveProperty('_id');
+          expect(firstUser.displayName).toEqual('Mr Admin')
           expect(firstUser['roles']).toEqual(expect.arrayContaining(["sysadmin", "public"]));
-
-          let secondUser = response.body[1];
+          
+          let secondUser = _.find(response.body, {username: 'joeschmo1'});
           expect(secondUser).toHaveProperty('_id');
+          expect(secondUser.displayName).toEqual('Joe Schmo')
           expect(secondUser['roles']).toEqual(expect.arrayContaining(["public"]));
           done()
         });
@@ -88,7 +90,7 @@ describe('GET /User/{id}', () => {
   test('returns a single user', done => {
     setupUsers(usersData)
       .then((users) => {
-        User.findOne({username: 'admin1'}).exec(function(error, user) {
+        User.findOne({username: 'joeschmo1'}).exec(function(error, user) {
           let publicUserId = user._id.toString();;
           let uri = '/api/user/' + publicUserId;
           request(app).get(uri).expect(200).then(response => {
@@ -96,7 +98,8 @@ describe('GET /User/{id}', () => {
             let publicUserData = response.body[0];
             expect(publicUserData).toMatchObject({
               '_id': publicUserId,
-              'roles': expect.arrayContaining(['public'])
+              'roles': expect.arrayContaining(['public']),
+              'displayName': 'Joe Schmo'
             });
             done();
           });
