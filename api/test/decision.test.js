@@ -3,29 +3,6 @@ const app = test_helper.app;
 const decisionFactory = require('./factories/decision_factory').factory;
 const mongoose = require('mongoose');
 const request = require('supertest');
-let swaggerParams = {
-  swagger: {
-    params: {
-      auth_payload: {
-        scopes: ['sysadmin', 'public'],
-        userID: null
-      },
-      fields: {
-        value: ['name', 'description']
-      }
-    }
-  }
-};
-
-let publicSwaggerParams = {
-  swagger: {
-    params: {
-      fields: {
-        value: ['name', 'description']
-      }
-    }
-  }
-};
 
 const _ = require('lodash');
 
@@ -34,60 +11,56 @@ require('../helpers/models/decision');
 
 var Decision = mongoose.model('Decision');
 
+const fieldNames = ['name', 'description'];
+
+function makeDecIdParams(id) {
+  return { 'decisionId': { value: id } };
+}
+
+function paramsWithDecId(req) {
+  return test_helper.createSwaggerParams(fieldNames, makeDecIdParams(req.params.id));
+}
+
+function publicParamsWithDecId(req) {
+  return test_helper.createPublicSwaggerParams(fieldNames, makeDecIdParams(req.params.id));
+}
+
 app.get('/api/decision', function(req, res) {
+  let swaggerParams = test_helper.createSwaggerParams(fieldNames);
   return decisionController.protectedGet(swaggerParams, res);
 });
 
 app.get('/api/decision/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['decisionId'] = {
-    value: req.params.id
-  };
-  return decisionController.protectedGet(swaggerWithExtraParams, res);
+  return decisionController.protectedGet(paramsWithDecId(req), res);
 });
 
 app.get('/api/public/decision', function(req, res) {
+  let publicSwaggerParams = test_helper.createPublicSwaggerParams(fieldNames);
   return decisionController.publicGet(publicSwaggerParams, res);
 });
 
 app.get('/api/public/decision/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(publicSwaggerParams);
-  swaggerWithExtraParams['swagger']['params']['decisionId'] = {
-    value: req.params.id
-  };
-  return decisionController.publicGet(swaggerWithExtraParams, res);
+  return decisionController.publicGet(publicParamsWithDecId(req), res);
 });
 
 app.post('/api/decision/', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['decision'] = {
-    value: req.body
-  };
-  return decisionController.protectedPost(swaggerWithExtraParams, res);
+  let extraFields = {
+    'decision':  { value: req.body }
+  }
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields);
+  return decisionController.protectedPost(params, res);
 });
 
 app.put('/api/decision/:id/publish', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['decisionId'] = {
-    value: req.params.id
-  };
-  return decisionController.protectedPublish(swaggerWithExtraParams, res);
+  return decisionController.protectedPublish(paramsWithDecId(req), res);
 });
 
 app.put('/api/decision/:id/unpublish', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['decisionId'] = {
-    value: req.params.id
-  };
-  return decisionController.protectedUnPublish(swaggerWithExtraParams, res);
+  return decisionController.protectedUnPublish(paramsWithDecId(req), res);
 });
 
 app.delete('/api/decision/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['decisionId'] = {
-    value: req.params.id
-  };
-  return decisionController.protectedDelete(swaggerWithExtraParams, res);
+  return decisionController.protectedDelete(paramsWithDecId(req), res);
 });
 
 const decisionsData = [
@@ -243,7 +216,7 @@ describe('POST /decision', () => {
       description: 'Victoria is a great place'
     };
 
-    request(app).post('/api/decision', decisionObj)
+    request(app).post('/api/decision')
       .send(decisionObj)
       .expect(200).then(response => {
         expect(response.body).toHaveProperty('_id');

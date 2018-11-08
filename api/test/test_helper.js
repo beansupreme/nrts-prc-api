@@ -5,6 +5,7 @@ const dbCleaner = new DatabaseCleaner('mongodb');
 const mongoose = require('mongoose');
 const mongooseOpts = require('../../config/mongoose_options');
 const mongoDbMemoryServer = require('mongodb-memory-server');
+const _ = require('lodash');
 const app = express();
 
 setupAppServer();
@@ -58,4 +59,45 @@ function setupInMemoryMongoServer(done) {
   });
 }
 
+function createSwaggerParams(fieldNames, additionalValues = {}) {
+  let defaultParams = defaultProtectedParams(fieldNames);
+  let swaggerObject = {
+    swagger: {
+      params: _.merge(defaultParams, additionalValues)
+    }
+  }
+  return swaggerObject;
+}
+
+function createPublicSwaggerParams(fieldNames, additionalValues = {}) {
+  let defaultParams = defaultPublicParams(fieldNames);
+  let swaggerObject = {
+    swagger: {
+      params: _.merge(defaultParams, additionalValues)
+    }
+  }
+  return swaggerObject;
+}
+
+function defaultProtectedParams(fieldNames) {
+  return {
+    auth_payload: {
+      scopes: ['sysadmin', 'public'],
+      userID: null
+    },
+    fields: {
+      value: _.cloneDeep(fieldNames)
+    }
+  };
+}
+function defaultPublicParams(fieldNames) {
+  return {
+    fields: {
+      value: _.cloneDeep(fieldNames)
+    }
+  };
+}
+
+exports.createSwaggerParams = createSwaggerParams;
+exports.createPublicSwaggerParams = createPublicSwaggerParams;
 exports.app = app;

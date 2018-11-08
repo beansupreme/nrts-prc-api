@@ -3,29 +3,6 @@ const app = test_helper.app;
 const mongoose = require('mongoose');
 const documentFactory = require('./factories/document_factory').factory;
 const request = require('supertest');
-let swaggerParams = {
-  swagger: {
-    params: {
-      auth_payload: {
-        scopes: ['sysadmin', 'public'],
-        userID: null
-      },
-      fields: {
-        value: ['displayName', 'documentFileName']
-      }
-    }
-  }
-};
-
-let publicSwaggerParams = {
-  swagger: {
-    params: {
-      fields: {
-        value: ['displayName', 'documentFileName']
-      }
-    }
-  }
-};
 
 const _ = require('lodash');
 
@@ -34,52 +11,48 @@ require('../helpers/models/document');
 
 var Document = mongoose.model('Document');
 
+const fieldNames = ['displayName', 'documentFileName'];
+
+function makeDocIdParams(id) {
+  return { 'docId': { value: id } };
+}
+
+function paramsWithDocId(req) {
+  return test_helper.createSwaggerParams(fieldNames, makeDocIdParams(req.params.id));
+}
+
+function publicParamsWithDocId(req) {
+  return test_helper.createPublicSwaggerParams(fieldNames, makeDocIdParams(req.params.id));
+}
+
 app.get('/api/document', function(req, res) {
+  let swaggerParams = test_helper.createSwaggerParams(fieldNames);
   return documentController.protectedGet(swaggerParams, res);
 });
 
 app.get('/api/document/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['docId'] = {
-    value: req.params.id
-  };
-  return documentController.protectedGet(swaggerWithExtraParams, res);
+  return documentController.protectedGet(paramsWithDocId(req), res);
 });
 
 app.get('/api/public/document', function(req, res) {
+  let publicSwaggerParams = test_helper.createPublicSwaggerParams(fieldNames);
   return documentController.publicGet(publicSwaggerParams, res);
 });
 
 app.get('/api/public/document/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(publicSwaggerParams);
-  swaggerWithExtraParams['swagger']['params']['docId'] = {
-    value: req.params.id
-  };
-  return documentController.publicGet(swaggerWithExtraParams, res);
+  return documentController.publicGet(publicParamsWithDocId(req), res);
 });
 
 app.put('/api/document/:id/publish', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['docId'] = {
-    value: req.params.id
-  };
-  return documentController.protectedPublish(swaggerWithExtraParams, res);
+  return documentController.protectedPublish(paramsWithDocId(req), res);
 });
 
 app.put('/api/document/:id/unpublish', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['docId'] = {
-    value: req.params.id
-  };
-  return documentController.protectedUnPublish(swaggerWithExtraParams, res);
+  return documentController.protectedUnPublish(paramsWithDocId(req), res);
 });
 
 app.delete('/api/document/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['docId'] = {
-    value: req.params.id
-  };
-  return documentController.protectedDelete(swaggerWithExtraParams, res);
+  return documentController.protectedDelete(paramsWithDocId(req), res);
 });
 
 const documentsData = [
@@ -176,17 +149,14 @@ describe('GET /public/document', () => {
         .then(response => {
           expect(response.body.length).toEqual(2);
 
-
-          let firstDocument = response.body[0];
+          let firstDocument = _.find(response.body, {documentFileName: 'special_file.csv'});
           expect(firstDocument).toHaveProperty('_id');
           expect(firstDocument.displayName).toBe('Special File');
-          expect(firstDocument.documentFileName).toBe('special_file.csv');
           expect(firstDocument['tags']).toEqual(expect.arrayContaining([["public"], ["sysadmin"]]));
 
-          let secondDocument = response.body[1];
+          let secondDocument = _.find(response.body, {documentFileName: 'vanilla.docx'});
           expect(secondDocument).toHaveProperty('_id');
           expect(secondDocument.displayName).toBe('Vanilla Ice Cream');
-          expect(secondDocument.documentFileName).toBe('vanilla.docx');
           expect(secondDocument['tags']).toEqual(expect.arrayContaining([["public"]]));
 
           done()
