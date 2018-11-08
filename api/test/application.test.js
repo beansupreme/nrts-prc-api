@@ -6,25 +6,7 @@ const mongoose = require('mongoose');
 const request = require('supertest');
 const nock = require('nock');
 const tantalisResponse = require('./fixtures/tantalis_response.json');
-let swaggerParams = {
-  swagger: {
-    params: {
-      auth_payload: {
-        scopes: ['sysadmin', 'public'],
-        userID: null
-      },
-      fields: {}
-    }
-  }
-};
-
-let publicSwaggerParams = {
-  swagger: {
-    params: {
-      fields: {}
-    }
-  }
-};
+const fieldNames = [];
 const _ = require('lodash');
 
 
@@ -35,6 +17,58 @@ require('../helpers/models/feature');
 var Application = mongoose.model('Application');
 var User = mongoose.model('User');
 var Feature = mongoose.model('Feature');
+
+function paramsWithAppId(req) {
+  let params = test_helper.buildParams({'appId': req.params.id});
+  return test_helper.createSwaggerParams(fieldNames, params);
+}
+
+function publicParamsWithAppId(req) {
+  let params = test_helper.buildParams({'appId': req.params.id});
+  return test_helper.createPublicSwaggerParams(fieldNames, params);
+}
+
+app.get('/api/application', function(req, res) {
+  let swaggerParams = test_helper.createSwaggerParams(fieldNames);
+  return applicationController.protectedGet(swaggerParams, res);
+});
+
+app.get('/api/application/:id', function(req, res) {
+  return applicationController.protectedGet(paramsWithAppId(req), res);
+});
+
+app.get('/api/public/application', function(req, res) {
+  let publicSwaggerParams = test_helper.createPublicSwaggerParams(fieldNames);
+  return applicationController.publicGet(publicSwaggerParams, res);
+});
+
+app.get('/api/public/application/:id', function(req, res) {
+  return applicationController.publicGet(publicParamsWithAppId(req), res);
+});
+
+app.post('/api/application/', function(req, res) {
+  let extraFields = test_helper.buildParams({'app': req.body});
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields, userID);
+  return applicationController.protectedPost(params, res);
+});
+
+app.delete('/api/application/:id', function(req, res) {
+  return applicationController.protectedDelete(paramsWithAppId(req), res);
+});
+
+app.put('/api/application/:id', function(req, res) {
+  let extraFields = test_helper.buildParams({'appId': req.params.id, 'AppObject': req.body});
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields);
+  return applicationController.protectedPut(params, res);
+});
+
+app.put('/api/application/:id/publish', function(req, res) {
+  return applicationController.protectedPublish(paramsWithAppId(req), res);
+});
+
+app.put('/api/application/:id/unpublish', function(req, res) {
+  return applicationController.protectedUnPublish(paramsWithAppId(req), res);
+});
 
 const applicationsData = [
   {code: 'SPECIAL', name: 'Special Application', tags: [['public'], ['sysadmin']], isDeleted: false},
@@ -61,7 +95,6 @@ function setupUser() {
     if (_.isUndefined(authUser)) {
       userFactory.create('user').then(user => {
         authUser = user;
-        swaggerParams['swagger']['params']['auth_payload']['userID'] = user._id
         userID = user._id;
         resolve();
       }).catch(error => {
@@ -73,73 +106,6 @@ function setupUser() {
   });
 }
 
-app.get('/api/application', function(req, res) {
-  return applicationController.protectedGet(swaggerParams, res);
-});
-
-app.get('/api/application/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['appId'] = {
-    value: req.params.id
-  };
-  return applicationController.protectedGet(swaggerWithExtraParams, res);
-});
-
-app.get('/api/public/application', function(req, res) {
-  return applicationController.publicGet(publicSwaggerParams, res);
-});
-
-app.get('/api/public/application/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(publicSwaggerParams);
-  swaggerWithExtraParams['swagger']['params']['appId'] = {
-    value: req.params.id
-  };
-  return applicationController.publicGet(swaggerWithExtraParams, res);
-});
-
-app.post('/api/application/', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['app'] = {
-    value: req.body
-  };
-  return applicationController.protectedPost(swaggerWithExtraParams, res);
-});
-
-app.delete('/api/application/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['appId'] = {
-    value: req.params.id
-  };
-  return applicationController.protectedDelete(swaggerWithExtraParams, res);
-});
-
-app.put('/api/application/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['appId'] = {
-    value: req.params.id
-  };
-  swaggerWithExtraParams['swagger']['params']['AppObject'] = {
-    value: req.body
-  };
-  return applicationController.protectedPut(swaggerWithExtraParams, res);
-});
-
-app.put('/api/application/:id/publish', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['appId'] = {
-    value: req.params.id
-  };
-  return applicationController.protectedPublish(swaggerWithExtraParams, res);
-});
-
-app.put('/api/application/:id/unpublish', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['appId'] = {
-    value: req.params.id
-  };
-  return applicationController.protectedUnPublish(swaggerWithExtraParams, res);
-});
-
 describe('GET /application', () => {
   test('returns a list of non-deleted, public and sysadmin Applications', done => {
     setupApplications(applicationsData).then((documents) => {
@@ -148,19 +114,16 @@ describe('GET /application', () => {
         .then(response => {
           expect(response.body.length).toEqual(3);
 
-          let firstApplication = response.body[0];
+          let firstApplication = _.find(response.body, {code: 'SPECIAL'});
           expect(firstApplication).toHaveProperty('_id');
-          expect(firstApplication.code).toBe('SPECIAL');
           expect(firstApplication['tags']).toEqual(expect.arrayContaining([["public"], ["sysadmin"]]));
 
-          let secondApplication = response.body[1];
+          let secondApplication = _.find(response.body, {code: 'VANILLA'});
           expect(secondApplication).toHaveProperty('_id');
-          expect(secondApplication.code).toBe('VANILLA');
           expect(secondApplication['tags']).toEqual(expect.arrayContaining([["public"]]));
 
-          let secretApplication = response.body[2];
+          let secretApplication = _.find(response.body, {code: 'TOP_SECRET'});
           expect(secretApplication).toHaveProperty('_id');
-          expect(secretApplication.code).toBe('TOP_SECRET');
           expect(secretApplication['tags']).toEqual(expect.arrayContaining([["sysadmin"]]));
           done()
         });

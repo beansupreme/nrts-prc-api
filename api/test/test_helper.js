@@ -59,8 +59,8 @@ function setupInMemoryMongoServer(done) {
   });
 }
 
-function createSwaggerParams(fieldNames, additionalValues = {}) {
-  let defaultParams = defaultProtectedParams(fieldNames);
+function createSwaggerParams(fieldNames, additionalValues = {}, userID = null) {
+  let defaultParams = defaultProtectedParams(fieldNames, userID);
   let swaggerObject = {
     swagger: {
       params: _.merge(defaultParams, additionalValues)
@@ -79,11 +79,11 @@ function createPublicSwaggerParams(fieldNames, additionalValues = {}) {
   return swaggerObject;
 }
 
-function defaultProtectedParams(fieldNames) {
+function defaultProtectedParams(fieldNames, userID = null) {
   return {
     auth_payload: {
       scopes: ['sysadmin', 'public'],
-      userID: null
+      userID: userID
     },
     fields: {
       value: _.cloneDeep(fieldNames)
@@ -98,6 +98,15 @@ function defaultPublicParams(fieldNames) {
   };
 }
 
+function buildParams(nameValueMapping) {
+  let paramObj = {}
+  _.mapKeys(nameValueMapping, function(value, key) {
+    paramObj[key] = { value: value };
+  });
+  return paramObj;
+}
+
 exports.createSwaggerParams = createSwaggerParams;
 exports.createPublicSwaggerParams = createPublicSwaggerParams;
+exports.buildParams = buildParams;
 exports.app = app;

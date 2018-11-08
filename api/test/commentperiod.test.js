@@ -4,30 +4,7 @@ const app = test_helper.app;
 const mongoose = require('mongoose');
 const commentPeriodFactory = require('./factories/comment_period_factory').factory;
 const request = require('supertest');
-let swaggerParams = {
-  swagger: {
-    params: {
-      auth_payload: {
-        scopes: ['sysadmin', 'public'],
-        userID: null
-      },
-      fields: {
-        value: ['name', 'description']
-      }
-    }
-  }
-};
-
-let publicSwaggerParams = {
-  swagger: {
-    params: {
-      fields: {
-        value: ['name', 'description']
-      }
-    }
-  }
-};
-
+const fieldNames = ['name', 'description'];
 const _ = require('lodash');
 
 const commentPeriodController = require('../controllers/commentperiod.js');
@@ -36,71 +13,56 @@ require('../helpers/models/user');
 var User = mongoose.model('User');
 var CommentPeriod = mongoose.model('CommentPeriod');
 
+function paramsWithCommentPerId(req) {
+  let params = test_helper.buildParams({'CommentPeriodId': req.params.id});
+  return test_helper.createSwaggerParams(fieldNames, params);
+}
+
+function publicParamsWithCommentPerId(req) {
+  let params = test_helper.buildParams({'CommentPeriodId': req.params.id});
+  return test_helper.createPublicSwaggerParams(fieldNames, params);
+}
+
 app.get('/api/commentperiod', function(req, res) {
+  let swaggerParams = test_helper.createSwaggerParams(fieldNames);
   return commentPeriodController.protectedGet(swaggerParams, res);
 });
 
 app.get('/api/commentperiod/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['CommentPeriodId'] = {
-    value: req.params.id
-  };
-  return commentPeriodController.protectedGet(swaggerWithExtraParams, res);
+  return commentPeriodController.protectedGet(paramsWithCommentPerId(req), res);
 });
 
 app.get('/api/public/commentperiod', function(req, res) {
-  return commentPeriodController.publicGet(publicSwaggerParams, res);
+  let swaggerParams = test_helper.createSwaggerParams(fieldNames);
+  return commentPeriodController.publicGet(swaggerParams, res);
 });
 
 app.get('/api/public/commentperiod/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(publicSwaggerParams);
-  swaggerWithExtraParams['swagger']['params']['CommentPeriodId'] = {
-    value: req.params.id
-  };
-  return commentPeriodController.publicGet(swaggerWithExtraParams, res);
+  return commentPeriodController.publicGet(publicParamsWithCommentPerId(req), res);
 });
 
 app.post('/api/commentperiod/', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['_commentPeriod'] = {
-    value: req.body
-  };
-  return commentPeriodController.protectedPost(swaggerWithExtraParams, res);
+  let extraFields = test_helper.buildParams({'_commentPeriod': req.body});
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields, userID);
+  return commentPeriodController.protectedPost(params, res);
 });
 
 app.put('/api/commentperiod/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['CommentPeriodId'] = {
-    value: req.params.id
-  };
-  swaggerWithExtraParams['swagger']['params']['cp'] = {
-    value: req.body
-  };
-  return commentPeriodController.protectedPut(swaggerWithExtraParams, res);
+  let extraFields = test_helper.buildParams({'CommentPeriodId': req.params.id, 'cp': req.body});
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields, userID);
+  return commentPeriodController.protectedPut(params, res);
 });
 
 app.put('/api/commentperiod/:id/publish', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['CommentPeriodId'] = {
-    value: req.params.id
-  };
-  return commentPeriodController.protectedPublish(swaggerWithExtraParams, res);
+  return commentPeriodController.protectedPublish(paramsWithCommentPerId(req), res);
 });
 
 app.put('/api/commentperiod/:id/unpublish', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['CommentPeriodId'] = {
-    value: req.params.id
-  };
-  return commentPeriodController.protectedUnPublish(swaggerWithExtraParams, res);
+  return commentPeriodController.protectedUnPublish(paramsWithCommentPerId(req), res);
 });
 
 app.delete('/api/commentperiod/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['CommentPeriodId'] = {
-    value: req.params.id
-  };
-  return commentPeriodController.protectedDelete(swaggerWithExtraParams, res);
+  return commentPeriodController.protectedDelete(paramsWithCommentPerId(req), res);
 });
 
 const commentPeriodsData = [
@@ -123,7 +85,6 @@ function setupCommentPeriods(commentPeriodsData) {
 function setupUser() {
   return new Promise(function(resolve, reject) {
     userFactory.build('user').then(user => {
-      swaggerParams['swagger']['params']['auth_payload']['userID'] = user._id
       userID = user._id;
       resolve();
     }).catch(error => {

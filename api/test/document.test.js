@@ -13,16 +13,14 @@ var Document = mongoose.model('Document');
 
 const fieldNames = ['displayName', 'documentFileName'];
 
-function makeDocIdParams(id) {
-  return { 'docId': { value: id } };
-}
-
 function paramsWithDocId(req) {
-  return test_helper.createSwaggerParams(fieldNames, makeDocIdParams(req.params.id));
+  let params = test_helper.buildParams({'docId': req.params.id});
+  return test_helper.createSwaggerParams(fieldNames, params);
 }
 
 function publicParamsWithDocId(req) {
-  return test_helper.createPublicSwaggerParams(fieldNames, makeDocIdParams(req.params.id));
+  let params = test_helper.buildParams({'docId': req.params.id});
+  return test_helper.createPublicSwaggerParams(fieldNames, params);
 }
 
 app.get('/api/document', function(req, res) {

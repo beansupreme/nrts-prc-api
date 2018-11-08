@@ -13,16 +13,14 @@ var Decision = mongoose.model('Decision');
 
 const fieldNames = ['name', 'description'];
 
-function makeDecIdParams(id) {
-  return { 'decisionId': { value: id } };
-}
-
 function paramsWithDecId(req) {
-  return test_helper.createSwaggerParams(fieldNames, makeDecIdParams(req.params.id));
+  let params = test_helper.buildParams({'decisionId': req.params.id});
+  return test_helper.createSwaggerParams(fieldNames, params);
 }
 
 function publicParamsWithDecId(req) {
-  return test_helper.createPublicSwaggerParams(fieldNames, makeDecIdParams(req.params.id));
+  let params = test_helper.buildParams({'decisionId': req.params.id});
+  return test_helper.createPublicSwaggerParams(fieldNames, params);
 }
 
 app.get('/api/decision', function(req, res) {
@@ -44,9 +42,7 @@ app.get('/api/public/decision/:id', function(req, res) {
 });
 
 app.post('/api/decision/', function(req, res) {
-  let extraFields = {
-    'decision':  { value: req.body }
-  }
+  let extraFields = test_helper.buildParams({'decision': req.body});
   let params = test_helper.createSwaggerParams(fieldNames, extraFields);
   return decisionController.protectedPost(params, res);
 });

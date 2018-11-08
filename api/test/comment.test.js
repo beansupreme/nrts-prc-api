@@ -3,29 +3,8 @@ const app = test_helper.app;
 const mongoose = require('mongoose');
 const commentFactory = require('./factories/comment_factory').factory;
 const request = require('supertest');
-let swaggerParams = {
-  swagger: {
-    params: {
-      auth_payload: {
-        scopes: ['sysadmin', 'public'],
-        userID: null
-      },
-      fields: {
-        value: ['comment', 'name']
-      }
-    }
-  }
-};
 
-let publicSwaggerParams = {
-  swagger: {
-    params: {
-      fields: {
-        value: ['comment', 'name']
-      }
-    }
-  }
-};
+const fieldNames = ['comment', 'name'];
 
 const _ = require('lodash');
 
@@ -33,63 +12,52 @@ const commentController = require('../controllers/comment.js');
 require('../helpers/models/comment');
 var Comment = mongoose.model('Comment');
 
+function paramsWithCommentId(req) {
+  let params = test_helper.buildParams({'CommentId': req.params.id});
+  return test_helper.createSwaggerParams(fieldNames, params);
+}
+
+function publicParamsWithCommentId(req) {
+  let params = test_helper.buildParams({'CommentId': req.params.id});
+  return test_helper.createPublicSwaggerParams(fieldNames, params);
+}
+
 app.get('/api/comment', function(req, res) {
+  let swaggerParams = test_helper.createSwaggerParams(fieldNames);
   return commentController.protectedGet(swaggerParams, res);
 });
 
 app.get('/api/comment/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['CommentId'] = {
-    value: req.params.id
-  };
-  return commentController.protectedGet(swaggerWithExtraParams, res);
+  return commentController.protectedGet(paramsWithCommentId(req), res);
 });
 
 app.get('/api/public/comment', function(req, res) {
+  let publicSwaggerParams = test_helper.createPublicSwaggerParams(fieldNames);
   return commentController.publicGet(publicSwaggerParams, res);
 });
 
 app.get('/api/public/comment/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(publicSwaggerParams);
-  swaggerWithExtraParams['swagger']['params']['CommentId'] = {
-    value: req.params.id
-  };
-  return commentController.publicGet(swaggerWithExtraParams, res);
+  return commentController.publicGet(publicParamsWithCommentId(req), res);
 });
 
 app.post('/api/public/comment/', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(publicSwaggerParams);
-  swaggerWithExtraParams['swagger']['params']['comment'] = {
-    value: req.body
-  };
-  return commentController.unProtectedPost(swaggerWithExtraParams, res);
+  let extraFields = test_helper.buildParams({'comment': req.body});
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields);
+  return commentController.unProtectedPost(params, res);
 });
 
 app.put('/api/comment/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['CommentId'] = {
-    value: req.params.id
-  };
-  swaggerWithExtraParams['swagger']['params']['comment'] = {
-    value: req.body
-  };
-  return commentController.protectedPut(swaggerWithExtraParams, res);
+  let extraFields = test_helper.buildParams({'CommentId': req.params.id, 'comment': req.body});
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields);
+  return commentController.protectedPut(params, res);
 });
 
 app.put('/api/comment/:id/publish', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['CommentId'] = {
-    value: req.params.id
-  };
-  return commentController.protectedPublish(swaggerWithExtraParams, res);
+  return commentController.protectedPublish(paramsWithCommentId(req), res);
 });
 
 app.put('/api/comment/:id/unpublish', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['CommentId'] = {
-    value: req.params.id
-  };
-  return commentController.protectedUnPublish(swaggerWithExtraParams, res);
+  return commentController.protectedUnPublish(paramsWithCommentId(req), res);
 });
 
 
@@ -117,7 +85,6 @@ describe('GET /Comment', () => {
         .expect(200)
         .then(response => {
           expect(response.body.length).toEqual(3);
-          console.log(response.body)
 
           let firstComment = _.find(response.body, {name: 'Special Comment'});
           expect(firstComment).toHaveProperty('_id');

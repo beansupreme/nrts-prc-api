@@ -4,38 +4,80 @@ const applicationFactory = require('./factories/application_factory').factory;
 const featureFactory = require('./factories/feature_factory').factory;
 const mongoose = require('mongoose');
 const request = require('supertest');
-
-let swaggerParams = {
-  swagger: {
-    params: {
-      auth_payload: {
-        scopes: ['sysadmin', 'public']
-      },
-      fields: {
-        value: ['tags', 'properties', 'applicationID']
-      }
-    }
-  }
-};
-
-let publicSwaggerParams = {
-  swagger: {
-    params: {
-      fields: {
-        value: ['tags', 'properties', 'applicationID']
-      }
-    }
-  }
-};
-
 const _ = require('lodash');
-
 
 const featureController = require('../controllers/feature.js');
 require('../helpers/models/feature');
 require('../helpers/models/application');
 var Feature = mongoose.model('Feature');
 
+const fieldNames = ['tags', 'properties', 'applicationID'];
+
+function paramsWithFeatureId(req) {
+  let params = test_helper.buildParams({'featureId': req.params.id});
+  return test_helper.createSwaggerParams(fieldNames, params);
+}
+
+function publicParamsWithFeatureId(req) {
+  let params = test_helper.buildParams({'featureId': req.params.id});
+  return test_helper.createPublicSwaggerParams(fieldNames, params);
+}
+
+app.get('/api/feature', function(req, res) {
+  let fields = {
+    'applicationId': req.query.applicationId
+  }
+  if (req.query.tantalisId) {
+    fields['tantalisId'] = _.toInteger(req.query.tantalisId)
+  }
+
+  let extraFields = test_helper.buildParams(fields);
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields);
+  return featureController.protectedGet(params, res);
+});
+
+app.get('/api/feature/:id', function(req, res) {
+  return featureController.protectedGet(paramsWithFeatureId(req), res);
+});
+
+app.get('/api/public/feature', function(req, res) {
+  let publicSwaggerParams = test_helper.createPublicSwaggerParams(fieldNames);
+  return featureController.publicGet(publicSwaggerParams, res);
+});
+
+app.get('/api/public/feature/:id', function(req, res) {
+  return featureController.publicGet(publicParamsWithFeatureId(req), res);
+});
+
+app.delete('/api/feature/:id', function(req, res) {
+  return featureController.protectedDelete(paramsWithFeatureId(req), res);
+});
+
+app.delete('/api/feature/', function(req, res) {
+  let extraFields = test_helper.buildParams({'applicationID': req.query.applicationID});
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields);
+  return featureController.protectedDelete(params, res);
+});
+
+app.post('/api/feature/', function(req, res) {
+  let extraFields = test_helper.buildParams({'feature': req.body});
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields);
+  return featureController.protectedPost(params, res);
+});
+
+app.put('/api/feature/:id', function(req, res) {
+  let extraFields = test_helper.buildParams({'featureId': req.params.id, 'FeatureObject': req.body});
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields);
+  return featureController.protectedPut(params, res);
+});
+
+app.put('/api/feature/:id/publish', function(req, res) {
+  return featureController.protectedPublish(paramsWithFeatureId(req), res);
+});
+
+app.put('/api/feature/:id/unpublish', function(req, res) {
+  return featureController.protectedUnPublish(paramsWithFeatureId(req), res);
+});
 
 const applicationsData = [
   {code: 'SPECIAL', name: 'Special Application', tags: [['public'], ['sysadmin']], isDeleted: false},
@@ -124,99 +166,6 @@ beforeEach(done => {
     deletedApplicationId = applicationsArray[3]._id;
     done();
   });
-});
-
-app.get('/api/feature', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  if (req.query.tantalisId) {
-    swaggerWithExtraParams['swagger']['params']['tantalisId'] = {
-      value: _.toInteger(req.query.tantalisId)
-    };
-  }
-  swaggerWithExtraParams['swagger']['params']['applicationId'] = {
-    value: req.query.applicationId
-  };
-  return featureController.protectedGet(swaggerWithExtraParams, res);
-});
-
-app.get('/api/feature/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['featureId'] = {
-    value: req.params.id
-  };
-  swaggerWithExtraParams['swagger']['params']['fields'] = {
-    value: ['tags', 'properties']
-  };
-  return featureController.protectedGet(swaggerWithExtraParams, res);
-});
-
-app.get('/api/public/feature', function(req, res) {
-  return featureController.publicGet(publicSwaggerParams, res);
-});
-
-app.get('/api/public/feature/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(publicSwaggerParams);
-  swaggerWithExtraParams['swagger']['params']['featureId'] = {
-    value: req.params.id
-  };
-  swaggerWithExtraParams['swagger']['params']['fields'] = {
-    value: ['tags', 'properties']
-  };
-  return featureController.publicGet(swaggerWithExtraParams, res);
-});
-
-app.delete('/api/feature/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['featureId'] = {
-    value: req.params.id
-  };
-  return featureController.protectedDelete(swaggerWithExtraParams, res);
-});
-
-app.delete('/api/feature/', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  if (req.query.applicationID) {
-    swaggerWithExtraParams['swagger']['params']['applicationID'] = {
-      value: req.query.applicationID
-    };
-  }
-
-  return featureController.protectedDelete(swaggerWithExtraParams, res);
-});
-
-app.post('/api/feature/', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['feature'] = {
-    value: req.body
-  };
-  return featureController.protectedPost(swaggerWithExtraParams, res);
-});
-
-app.put('/api/feature/:id', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['featureId'] = {
-    value: req.params.id
-  };
-  swaggerWithExtraParams['swagger']['params']['FeatureObject'] = {
-    value: req.body
-  };
-  return featureController.protectedPut(swaggerWithExtraParams, res);
-});
-
-app.put('/api/feature/:id/publish', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['featureId'] = {
-    value: req.params.id
-  };
-  return featureController.protectedPublish(swaggerWithExtraParams, res);
-});
-
-app.put('/api/feature/:id/unpublish', function(req, res) {
-  let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  swaggerWithExtraParams['swagger']['params']['featureId'] = {
-    value: req.params.id
-  };
-  return featureController.protectedUnPublish(swaggerWithExtraParams, res);
 });
 
 describe('GET /feature', () => {
