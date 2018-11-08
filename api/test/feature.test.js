@@ -7,9 +7,9 @@ const request = require('supertest');
 
 let swaggerParams = {
   swagger: {
-    params:{
-      auth_payload:{
-        scopes: [ 'sysadmin', 'public' ]
+    params: {
+      auth_payload: {
+        scopes: ['sysadmin', 'public']
       },
       fields: {
         value: ['tags', 'properties', 'applicationID']
@@ -20,7 +20,7 @@ let swaggerParams = {
 
 let publicSwaggerParams = {
   swagger: {
-    params:{
+    params: {
       fields: {
         value: ['tags', 'properties', 'applicationID']
       }
@@ -38,18 +38,18 @@ var Feature = mongoose.model('Feature');
 
 
 const applicationsData = [
-  { code: 'SPECIAL', name: 'Special Application', tags: [['public'], ['sysadmin']], isDeleted: false },
-  { code: 'VANILLA', name: 'Vanilla Ice Cream', tags: [['public']], isDeleted: false },
-  { code: 'TOP_SECRET', name: 'Confidential Application', tags: [['sysadmin']], isDeleted: false },
-  { code: 'DELETED', name: 'Deleted Application', tags: [['public'],['sysadmin']], isDeleted: true },
+  {code: 'SPECIAL', name: 'Special Application', tags: [['public'], ['sysadmin']], isDeleted: false},
+  {code: 'VANILLA', name: 'Vanilla Ice Cream', tags: [['public']], isDeleted: false},
+  {code: 'TOP_SECRET', name: 'Confidential Application', tags: [['sysadmin']], isDeleted: false},
+  {code: 'DELETED', name: 'Deleted Application', tags: [['public'], ['sysadmin']], isDeleted: true},
 ];
 
 var specialApplicationId,
-    vanillaApplicationId,
-    topSecretApplicationId,
-    deletedApplicationId;
+  vanillaApplicationId,
+  topSecretApplicationId,
+  deletedApplicationId;
 
-   
+
 function setupApplications(applicationsData) {
   return new Promise(function(resolve, reject) {
     applicationFactory.createMany('application', applicationsData).then(applicationArray => {
@@ -110,7 +110,7 @@ function buildFeaturesData() {
         TENURE_LOCATION: "Torn down Govt Building",
         DISPOSITION_TRANSACTION_SID: 555555,
       },
-      tags: [['public'],['sysadmin']],
+      tags: [['public'], ['sysadmin']],
       isDeleted: true
     },
   ]
@@ -128,7 +128,7 @@ beforeEach(done => {
 
 app.get('/api/feature', function(req, res) {
   let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  if (req.query.tantalisId) { 
+  if (req.query.tantalisId) {
     swaggerWithExtraParams['swagger']['params']['tantalisId'] = {
       value: _.toInteger(req.query.tantalisId)
     };
@@ -139,10 +139,10 @@ app.get('/api/feature', function(req, res) {
   return featureController.protectedGet(swaggerWithExtraParams, res);
 });
 
-app.get('/api/feature/:id', function(req, res) { 
+app.get('/api/feature/:id', function(req, res) {
   let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
   swaggerWithExtraParams['swagger']['params']['featureId'] = {
-      value: req.params.id
+    value: req.params.id
   };
   swaggerWithExtraParams['swagger']['params']['fields'] = {
     value: ['tags', 'properties']
@@ -154,10 +154,10 @@ app.get('/api/public/feature', function(req, res) {
   return featureController.publicGet(publicSwaggerParams, res);
 });
 
-app.get('/api/public/feature/:id', function(req, res) { 
+app.get('/api/public/feature/:id', function(req, res) {
   let swaggerWithExtraParams = _.cloneDeep(publicSwaggerParams);
   swaggerWithExtraParams['swagger']['params']['featureId'] = {
-      value: req.params.id
+    value: req.params.id
   };
   swaggerWithExtraParams['swagger']['params']['fields'] = {
     value: ['tags', 'properties']
@@ -165,22 +165,22 @@ app.get('/api/public/feature/:id', function(req, res) {
   return featureController.publicGet(swaggerWithExtraParams, res);
 });
 
-app.delete('/api/feature/:id', function(req, res) { 
+app.delete('/api/feature/:id', function(req, res) {
   let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
   swaggerWithExtraParams['swagger']['params']['featureId'] = {
-      value: req.params.id
+    value: req.params.id
   };
   return featureController.protectedDelete(swaggerWithExtraParams, res);
 });
 
-app.delete('/api/feature/', function(req, res) { 
+app.delete('/api/feature/', function(req, res) {
   let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
-  if (req.query.applicationID) { 
+  if (req.query.applicationID) {
     swaggerWithExtraParams['swagger']['params']['applicationID'] = {
       value: req.query.applicationID
     };
   }
-  
+
   return featureController.protectedDelete(swaggerWithExtraParams, res);
 });
 
@@ -206,7 +206,7 @@ app.put('/api/feature/:id', function(req, res) {
 app.put('/api/feature/:id/publish', function(req, res) {
   let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
   swaggerWithExtraParams['swagger']['params']['featureId'] = {
-      value: req.params.id
+    value: req.params.id
   };
   return featureController.protectedPublish(swaggerWithExtraParams, res);
 });
@@ -214,7 +214,7 @@ app.put('/api/feature/:id/publish', function(req, res) {
 app.put('/api/feature/:id/unpublish', function(req, res) {
   let swaggerWithExtraParams = _.cloneDeep(swaggerParams);
   swaggerWithExtraParams['swagger']['params']['featureId'] = {
-      value: req.params.id
+    value: req.params.id
   };
   return featureController.protectedUnPublish(swaggerWithExtraParams, res);
 });
@@ -223,91 +223,91 @@ describe('GET /feature', () => {
   test('returns a list of non-deleted, public and sysadmin features', done => {
     setupFeatures().then((documents) => {
       request(app).get('/api/feature')
-      .expect(200)
-      .then(response =>{
-        expect(response.body.length).toEqual(3);
+        .expect(200)
+        .then(response => {
+          expect(response.body.length).toEqual(3);
 
-        let firstFeature = _.find(response.body, {applicationID: specialApplicationId.toString()});
-        expect(firstFeature._id).not.toBeNull();
-        
-        expect(firstFeature).toHaveProperty('properties');
-        let firstFeatureProps = firstFeature.properties
-        expect(firstFeatureProps.DISPOSITION_TRANSACTION_SID).toBe(222222);
-        expect(firstFeatureProps.TENURE_LOCATION).toBe("1012 Douglas St");
+          let firstFeature = _.find(response.body, {applicationID: specialApplicationId.toString()});
+          expect(firstFeature._id).not.toBeNull();
 
-        let secondFeature = _.find(response.body, {applicationID: vanillaApplicationId.toString()})
-        let secondFeatureProps = secondFeature.properties
-        expect(secondFeatureProps.DISPOSITION_TRANSACTION_SID).toBe(333333);
-        expect(secondFeatureProps.TENURE_LOCATION).toBe("Beacon Hill Ice Cream");
+          expect(firstFeature).toHaveProperty('properties');
+          let firstFeatureProps = firstFeature.properties
+          expect(firstFeatureProps.DISPOSITION_TRANSACTION_SID).toBe(222222);
+          expect(firstFeatureProps.TENURE_LOCATION).toBe("1012 Douglas St");
 
-        let secretFeature = _.find(response.body, {applicationID: topSecretApplicationId.toString()})
-        let secretFeatureProps = secretFeature.properties
-        expect(secretFeatureProps.DISPOSITION_TRANSACTION_SID).toBe(444444);
-        expect(secretFeatureProps.TENURE_LOCATION).toBe('Pacific Naval Fleet');
+          let secondFeature = _.find(response.body, {applicationID: vanillaApplicationId.toString()})
+          let secondFeatureProps = secondFeature.properties
+          expect(secondFeatureProps.DISPOSITION_TRANSACTION_SID).toBe(333333);
+          expect(secondFeatureProps.TENURE_LOCATION).toBe("Beacon Hill Ice Cream");
 
-        done()
-      });
+          let secretFeature = _.find(response.body, {applicationID: topSecretApplicationId.toString()})
+          let secretFeatureProps = secretFeature.properties
+          expect(secretFeatureProps.DISPOSITION_TRANSACTION_SID).toBe(444444);
+          expect(secretFeatureProps.TENURE_LOCATION).toBe('Pacific Naval Fleet');
+
+          done()
+        });
     });
   });
 
   test('does not return tags', done => {
-    setupFeatures().then((documents) => { 
+    setupFeatures().then((documents) => {
       request(app).get('/api/feature')
-      .expect(200)
-      .then(response =>{
-        let firstFeature = response.body[0];
-        expect(firstFeature).not.toHaveProperty('tags');
-        done();
-      });
+        .expect(200)
+        .then(response => {
+          let firstFeature = response.body[0];
+          expect(firstFeature).not.toHaveProperty('tags');
+          done();
+        });
     });
   });
 
   test('can search based on tantalisId', done => {
-    setupFeatures().then((documents) => { 
+    setupFeatures().then((documents) => {
       request(app).get('/api/feature')
-      .query({tantalisId: 333333})
-      .expect(200)
-      .then(response =>{
-        expect(response.body.length).toBe(1);
-        let firstFeature = response.body[0];
-        expect(firstFeature).not.toHaveProperty('tags');
-        expect(firstFeature._id).not.toBeNull();
-        done();
-      });
+        .query({tantalisId: 333333})
+        .expect(200)
+        .then(response => {
+          expect(response.body.length).toBe(1);
+          let firstFeature = response.body[0];
+          expect(firstFeature).not.toHaveProperty('tags');
+          expect(firstFeature._id).not.toBeNull();
+          done();
+        });
     });
   });
 
   test('can search based on applicationId', done => {
-    setupFeatures().then((documents) => { 
+    setupFeatures().then((documents) => {
       expect(specialApplicationId).not.toBeNull();
       expect(specialApplicationId).not.toBeUndefined();
       request(app)
-      .get('/api/feature')
-      .query({applicationId: specialApplicationId.toString()})
-      .expect(200)
-      .then(response =>{
-        expect(response.body.length).toBe(1);
-        let firstFeature = response.body[0];
-        expect(firstFeature).not.toHaveProperty('tags');
-        done();
-      });
+        .get('/api/feature')
+        .query({applicationId: specialApplicationId.toString()})
+        .expect(200)
+        .then(response => {
+          expect(response.body.length).toBe(1);
+          let firstFeature = response.body[0];
+          expect(firstFeature).not.toHaveProperty('tags');
+          done();
+        });
     });
   });
 
   test('returns an empty array when there are no Features', done => {
     request(app).get('/api/feature')
-    .expect(200)
-    .then(response => {
-      expect(response.body.length).toBe(0);
-      expect(response.body).toEqual([]);
-      done();
-    });
+      .expect(200)
+      .then(response => {
+        expect(response.body.length).toBe(0);
+        expect(response.body).toEqual([]);
+        done();
+      });
   });
 
   describe.skip('searching based on coordinates', () => {
     test.skip('it finds a feature from passed in coordinates', () => {});
-    test.skip('it returns 400 if the coordinates are malformed', () => {});  
-  });  
+    test.skip('it returns 400 if the coordinates are malformed', () => {});
+  });
 });
 
 describe('GET /feature/{id}', () => {
@@ -317,23 +317,23 @@ describe('GET /feature/{id}', () => {
         expect(feature).not.toBeNull();
         let specialFeatureId = feature._id.toString();
         let uri = '/api/feature/' + specialFeatureId;
-        
+
         request(app)
-        .get(uri)
-        .expect(200)
-        .then(response => {
-          expect(response.body.length).toBe(1);
-          let responseObject = response.body[0];
-          expect(responseObject).toMatchObject({
+          .get(uri)
+          .expect(200)
+          .then(response => {
+            expect(response.body.length).toBe(1);
+            let responseObject = response.body[0];
+            expect(responseObject).toMatchObject({
               '_id': specialFeatureId,
               'properties': expect.objectContaining({
                 'TENURE_STATUS': "ACCEPTED",
                 'TENURE_LOCATION': "1012 Douglas St",
                 'DISPOSITION_TRANSACTION_SID': 222222,
               })
+            });
+            done();
           });
-          done();
-        });
       });;
     });
   });
@@ -342,9 +342,9 @@ describe('GET /feature/{id}', () => {
   test.skip('404s if the feature does not exist', done => {
     let uri = '/api/feature/' + 'NON_EXISTENT_ID';
     request(app).get(uri)
-    .expect(404)
-    .expect(500)
-    .then(done);
+      .expect(404)
+      .expect(500)
+      .then(done);
   });
 });
 
@@ -352,40 +352,40 @@ describe('GET /public/feature', () => {
   test('returns a list of public features', done => {
     setupFeatures().then((documents) => {
       request(app).get('/api/public/feature')
-      .expect(200)
-      .then(response =>{
-        expect(response.body.length).toEqual(2);
+        .expect(200)
+        .then(response => {
+          expect(response.body.length).toEqual(2);
 
-        let firstFeature = response.body[0];
-        expect(firstFeature).toHaveProperty('_id');
+          let firstFeature = response.body[0];
+          expect(firstFeature).toHaveProperty('_id');
 
-        expect(firstFeature).toHaveProperty('properties');
-        let firstFeatureProps = firstFeature.properties
-        expect(firstFeatureProps.DISPOSITION_TRANSACTION_SID).toBe(222222);
-        expect(firstFeatureProps.TENURE_LOCATION).toBe("1012 Douglas St");
+          expect(firstFeature).toHaveProperty('properties');
+          let firstFeatureProps = firstFeature.properties
+          expect(firstFeatureProps.DISPOSITION_TRANSACTION_SID).toBe(222222);
+          expect(firstFeatureProps.TENURE_LOCATION).toBe("1012 Douglas St");
 
-        let secondFeature = response.body[1];
-        let secondFeatureProps = secondFeature.properties
-        expect(secondFeatureProps.DISPOSITION_TRANSACTION_SID).toBe(333333);
-        expect(secondFeatureProps.TENURE_LOCATION).toBe("Beacon Hill Ice Cream");
+          let secondFeature = response.body[1];
+          let secondFeatureProps = secondFeature.properties
+          expect(secondFeatureProps.DISPOSITION_TRANSACTION_SID).toBe(333333);
+          expect(secondFeatureProps.TENURE_LOCATION).toBe("Beacon Hill Ice Cream");
 
-        done()
-      });
+          done()
+        });
     });
   });
 
   test('returns an empty array when there are no features', done => {
     request(app).get('/api/public/feature')
-    .expect(200)
-    .then(response => {
-      expect(response.body.length).toBe(0);
-      expect(response.body).toEqual([]);
-      done();
-    });
+      .expect(200)
+      .then(response => {
+        expect(response.body.length).toBe(0);
+        expect(response.body).toEqual([]);
+        done();
+      });
   });
 
   test.skip('allows pagination', done => {
-    
+
   });
 });
 
@@ -395,23 +395,23 @@ describe('GET /public/feature/{id}', () => {
       Feature.findOne({applicationID: specialApplicationId}).exec(function(error, feature) {
         let specialFeatureId = feature._id.toString();
         let uri = '/api/public/feature/' + specialFeatureId;
-        
+
         request(app)
-        .get(uri)
-        .expect(200)
-        .then(response => {
-          expect(response.body.length).toBe(1);
-          let responseObj = response.body[0];
-          expect(responseObj).toMatchObject({
+          .get(uri)
+          .expect(200)
+          .then(response => {
+            expect(response.body.length).toBe(1);
+            let responseObj = response.body[0];
+            expect(responseObj).toMatchObject({
               '_id': specialFeatureId,
               'properties': expect.objectContaining({
                 'TENURE_STATUS': "ACCEPTED",
                 'TENURE_LOCATION': "1012 Douglas St",
                 'DISPOSITION_TRANSACTION_SID': 222222,
               })
+            });
+            done();
           });
-          done();
-        });
       });;
     });
   });
@@ -424,14 +424,14 @@ describe('DELETE /feature/{id}', () => {
         let vanillaFeatureId = feature._id.toString();
         let uri = '/api/feature/' + vanillaFeatureId;
         request(app)
-        .delete(uri)
-        .expect(200)
-        .then(response => {
-          Feature.findOne({applicationID: vanillaApplicationId}).exec(function(error, feature) {
-            expect(feature).toBeNull();
-            done();
+          .delete(uri)
+          .expect(200)
+          .then(response => {
+            Feature.findOne({applicationID: vanillaApplicationId}).exec(function(error, feature) {
+              expect(feature).toBeNull();
+              done();
+            });
           });
-        });
       });
     });
   });
@@ -440,15 +440,15 @@ describe('DELETE /feature/{id}', () => {
     setupFeatures().then((documents) => {
       let uri = '/api/feature';
       request(app)
-      .delete(uri)
-      .query({applicationID: vanillaApplicationId.toString()})
-      .expect(200)
-      .then(response => {
-        Feature.findOne({applicationID: vanillaApplicationId}).exec(function(error, feature) {
-          expect(feature).toBeNull();
-          done();
+        .delete(uri)
+        .query({applicationID: vanillaApplicationId.toString()})
+        .expect(200)
+        .then(response => {
+          Feature.findOne({applicationID: vanillaApplicationId}).exec(function(error, feature) {
+            expect(feature).toBeNull();
+            done();
+          });
         });
-      });
     });
   });
 
@@ -457,31 +457,31 @@ describe('DELETE /feature/{id}', () => {
     setupFeatures().then((documents) => {
       let uri = '/api/feature';
       request(app)
-      .delete(uri)
-      .query({})
-      .expect(400)
-      .then(response => {
-        expect(response.body).toBe("Can't delete entire collection.");
-        done();
+        .delete(uri)
+        .query({})
+        .expect(400)
+        .then(response => {
+          expect(response.body).toBe("Can't delete entire collection.");
+          done();
 
-      });
+        });
     });
   });
   //currently 500s when deleting a non-existent feature
   test.skip('404s if the feature does not exist', done => {
     let uri = '/api/feature/' + 'NON_EXISTENT_ID';
     request(app)
-    .delete(uri)
-    .expect(404)
-    .then(response => {
-      console.log(response)
-      done();
-    });
+      .delete(uri)
+      .expect(404)
+      .then(response => {
+        console.log(response)
+        done();
+      });
   });
 });
 
 describe('POST /feature', () => {
-  let newApplicationData = { code: 'NEW_APP', name: 'Fun Application', tags: [['public'],['sysadmin']], isDeleted: false };
+  let newApplicationData = {code: 'NEW_APP', name: 'Fun Application', tags: [['public'], ['sysadmin']], isDeleted: false};
   let newApplicationId;
   beforeEach(done => {
     setupApplications([newApplicationData]).then((applicationsArray) => {
@@ -500,8 +500,8 @@ describe('POST /feature', () => {
       }
     };
     request(app).post('/api/feature', featureObj)
-    .send(featureObj)
-    .expect(200).then(response => {
+      .send(featureObj)
+      .expect(200).then(response => {
         expect(response.body).toHaveProperty('_id');
         Feature.findById(response.body['_id']).exec(function(error, feature) {
           expect(feature).not.toBeNull();
@@ -515,7 +515,7 @@ describe('POST /feature', () => {
 
           done();
         });
-    });
+      });
   });
 
   test('sets tags to public and sysadmin by default', done => {
@@ -528,24 +528,24 @@ describe('POST /feature', () => {
       }
     };
     request(app).post('/api/feature', featureObj)
-    .send(featureObj)
-    .expect(200).then(response => {
-      expect(response.body).toHaveProperty('_id');
-      Feature.findById(response.body['_id']).exec(function(error, feature) {
-        expect(feature).not.toBeNull();
+      .send(featureObj)
+      .expect(200).then(response => {
+        expect(response.body).toHaveProperty('_id');
+        Feature.findById(response.body['_id']).exec(function(error, feature) {
+          expect(feature).not.toBeNull();
 
-        expect(feature.tags.length).toEqual(2);
-        expect(feature.tags[0]).toEqual(expect.arrayContaining(['sysadmin']));
-        expect(feature.tags[1]).toEqual(expect.arrayContaining(['public']));
-        
-        done();
+          expect(feature.tags.length).toEqual(2);
+          expect(feature.tags[0]).toEqual(expect.arrayContaining(['sysadmin']));
+          expect(feature.tags[1]).toEqual(expect.arrayContaining(['public']));
+
+          done();
+        });
       });
-    });
   });
 });
 
 describe('PUT /feature/:id', () => {
-  let existingApplicationData = { code: 'NEW_APP', name: 'Old old application', tags: [['public'],['sysadmin']], isDeleted: false };
+  let existingApplicationData = {code: 'NEW_APP', name: 'Old old application', tags: [['public'], ['sysadmin']], isDeleted: false};
   let existingApplicationId;
 
   beforeEach(done => {
@@ -574,27 +574,27 @@ describe('PUT /feature/:id', () => {
     featureFactory.create('feature', featureData).then(featureObj => {
       let uri = '/api/feature/' + featureObj._id;
       request(app).put(uri, updateData)
-      .send(updateData)
-      .then(response => {
-        Feature.findOne({applicationID: existingApplicationId}).exec(function(error, feature) {
-          expect(feature).not.toBeNull();
-          expect(feature.properties).not.toBeNull()
-          expect(feature.properties.TENURE_STATUS).toBe('REJECTED')
-          expect(feature.properties.TENURE_LOCATION).toBe('Qualcomm Second Floor')
-          done();
+        .send(updateData)
+        .then(response => {
+          Feature.findOne({applicationID: existingApplicationId}).exec(function(error, feature) {
+            expect(feature).not.toBeNull();
+            expect(feature.properties).not.toBeNull()
+            expect(feature.properties.TENURE_STATUS).toBe('REJECTED')
+            expect(feature.properties.TENURE_LOCATION).toBe('Qualcomm Second Floor')
+            done();
+          });
         });
-      });
     });
   });
 
   test('404s if the feature does not exist', done => {
     let uri = '/api/feature/' + 'NON_EXISTENT_ID';
     request(app).put(uri)
-    .send({properties: {'I_AM': 'hacker_man'}})
-    .expect(404)
-    .then(response => {
+      .send({properties: {'I_AM': 'hacker_man'}})
+      .expect(404)
+      .then(response => {
         done();
-    });
+      });
   });
 
   test('does not allow updating tags', done => {
@@ -609,13 +609,13 @@ describe('PUT /feature/:id', () => {
     featureFactory.create('feature', featureData).then(feature => {
       let uri = '/api/feature/' + feature._id;
       request(app).put(uri, updateData)
-      .send(updateData)
-      .then(response => {
-        Feature.findById(feature._id).exec(function(error, updatedFeature) {
-          expect(updatedFeature.tags.length).toEqual(1)
-          done();
+        .send(updateData)
+        .then(response => {
+          Feature.findById(feature._id).exec(function(error, updatedFeature) {
+            expect(updatedFeature.tags.length).toEqual(1)
+            done();
+          });
         });
-      });
     });
   });
 });
@@ -623,12 +623,12 @@ describe('PUT /feature/:id', () => {
 describe('PUT /application/:id/publish', () => {
   let existingApplicationId;
   beforeEach(done => {
-    setupApplications([{ code: 'NEW_APP'}]).then((applicationsArray) => {
+    setupApplications([{code: 'NEW_APP'}]).then((applicationsArray) => {
       existingApplicationId = applicationsArray[0].id;
       done();
     });
   });
-  
+
   test('publishes a feature', done => {
     let unpublishedFeatureData = {
       applicationID: existingApplicationId,
@@ -637,27 +637,27 @@ describe('PUT /application/:id/publish', () => {
     featureFactory.create('feature', unpublishedFeatureData).then(feature => {
       let uri = '/api/feature/' + feature._id + '/publish';
       request(app).put(uri)
-      .expect(200)
-      .send({})
-      .then(response => {
-        Feature.findById(feature._id).exec(function(error, updatedFeature) {
-          expect(updatedFeature).toBeDefined();
-          expect(updatedFeature).not.toBeNull();
-          expect(updatedFeature.tags[0]).toEqual(expect.arrayContaining(['public']));
-          done();
+        .expect(200)
+        .send({})
+        .then(response => {
+          Feature.findById(feature._id).exec(function(error, updatedFeature) {
+            expect(updatedFeature).toBeDefined();
+            expect(updatedFeature).not.toBeNull();
+            expect(updatedFeature.tags[0]).toEqual(expect.arrayContaining(['public']));
+            done();
+          });
         });
-      });
     });
   });
 
   test('404s if the feature does not exist', done => {
     let uri = '/api/feature/' + 'NON_EXISTENT_ID' + '/publish';
     request(app).put(uri)
-    .send({})
-    .expect(404)
-    .then(response => {
+      .send({})
+      .expect(404)
+      .then(response => {
         done();
-    });
+      });
   });
 });
 
@@ -665,7 +665,7 @@ describe('PUT /feature/:id/unpublish', () => {
   let existingApplicationId;
 
   beforeEach(done => {
-    setupApplications([{ code: 'EXISTING_APP'}]).then((applicationsArray) => {
+    setupApplications([{code: 'EXISTING_APP'}]).then((applicationsArray) => {
       existingApplicationId = applicationsArray[0].id;
       done();
     });
@@ -676,29 +676,29 @@ describe('PUT /feature/:id/unpublish', () => {
       applicationID: existingApplicationId,
       tags: [['public']]
     };
-    
+
     featureFactory.create('feature', publicFeatureData).then(feature => {
       let uri = '/api/feature/' + feature._id + '/unpublish';
       request(app).put(uri)
-      .expect(200)
-      .send({})
-      .then(response => {
-        Feature.findById(feature.id).exec(function(error, updatedFeature) {
-          expect(updatedFeature).toBeDefined();
-          expect(updatedFeature.tags[0]).toEqual(expect.arrayContaining([]));
-          done();
+        .expect(200)
+        .send({})
+        .then(response => {
+          Feature.findById(feature.id).exec(function(error, updatedFeature) {
+            expect(updatedFeature).toBeDefined();
+            expect(updatedFeature.tags[0]).toEqual(expect.arrayContaining([]));
+            done();
+          });
         });
-      });
     });
   });
 
   test('404s if the feature does not exist', done => {
     let uri = '/api/feature/' + 'NON_EXISTENT_ID' + '/unpublish';
     request(app).put(uri)
-    .send({})
-    .expect(404)
-    .then(response => {
+      .send({})
+      .expect(404)
+      .then(response => {
         done();
-    });
+      });
   });
 });
