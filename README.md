@@ -90,3 +90,30 @@ Unfortunately, this results in a lot of boilerplate code in each of the controll
 The tests run on an in-memory MongoDB server, using the [mongodb-memory-server](https://github.com/nodkz/mongodb-memory-server) package. The setup can be viewed at [test_helper.js](api/test/test_helper.js), and additional config in [config/mongoose_options.js]. It is currently configured to wipe out the database after each test run to prevent database pollution. 
 
 [Factory-Girl](https://github.com/aexmachina/factory-girl) is used to easily create models(persisted to db) for testing purposes. 
+
+## Mocking http requests
+External http calls (such as GETs to BCGW) are mocked with a tool called [nock](https://github.com/nock/nock). Currently sample JSON responses are stored in the [test/fixtures](test/fixtures) directory. This allows you to intercept a call to an external service such as bcgw, and respond with your own sample data. 
+
+```javascript
+  const bcgwDomain = 'https://openmaps.gov.bc.ca';
+  const searchPath = '/geo/pub/FOOO';
+  const crownlandsResponse = require('./fixtures/crownlands_response.json');
+  var bcgw = nock(bcgwDomain);
+  let dispositionId = 666666;
+
+  beforeEach(() => {
+    bcgw.get(searchPath + urlEncodedDispositionId)
+      .reply(200, crownlandsResponse);
+  });
+
+  test('returns the features data from bcgw', done => {
+    request(app).get('/api/public/search/bcgw/dispositionTransactionId/' + dispositionId)
+      .expect(200)
+      .then(response => {
+        let firstFeature = response.body.features[0];
+        expect(firstFeature).toHaveProperty('properties');
+        expect(firstFeature.properties).toHaveProperty('DISPOSITION_TRANSACTION_SID');
+        done();
+      });
+  });
+```
