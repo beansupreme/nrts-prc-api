@@ -174,12 +174,12 @@ describe('GET /public/comment', () => {
         .then(response => {
           expect(response.body.length).toEqual(2);
 
-          let firstComment = response.body[0];
+          let firstComment = _.find(response.body, {name: 'Special Comment'});
           expect(firstComment).toHaveProperty('_id');
           expect(firstComment.comment).toBe('This Comment is so special');
           expect(firstComment['tags']).toEqual(expect.arrayContaining([["public"], ["sysadmin"]]));
 
-          let secondComment = response.body[1];
+          let secondComment = _.find(response.body, {name: 'Vanilla Ice Cream'});
           expect(secondComment).toHaveProperty('_id');
           expect(secondComment.comment).toBe('I like Ice Cream');
           expect(secondComment['tags']).toEqual(expect.arrayContaining([["public"]]));

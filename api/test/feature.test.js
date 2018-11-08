@@ -313,7 +313,7 @@ describe('GET /public/feature', () => {
         .then(response => {
           expect(response.body.length).toEqual(2);
 
-          let firstFeature = response.body[0];
+          let firstFeature = _.find(response.body, {applicationID: specialApplicationId.toString()});
           expect(firstFeature).toHaveProperty('_id');
 
           expect(firstFeature).toHaveProperty('properties');
@@ -321,7 +321,7 @@ describe('GET /public/feature', () => {
           expect(firstFeatureProps.DISPOSITION_TRANSACTION_SID).toBe(222222);
           expect(firstFeatureProps.TENURE_LOCATION).toBe("1012 Douglas St");
 
-          let secondFeature = response.body[1];
+          let secondFeature = _.find(response.body, {applicationID: vanillaApplicationId.toString()});
           let secondFeatureProps = secondFeature.properties
           expect(secondFeatureProps.DISPOSITION_TRANSACTION_SID).toBe(333333);
           expect(secondFeatureProps.TENURE_LOCATION).toBe("Beacon Hill Ice Cream");

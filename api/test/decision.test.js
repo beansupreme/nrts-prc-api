@@ -175,12 +175,12 @@ describe('GET /public/decision', () => {
         .then(response => {
           expect(response.body.length).toEqual(2);
 
-          let firstDecision = response.body[0];
+          let firstDecision = _.find(response.body, {code: 'SPECIAL'});
           expect(firstDecision).toHaveProperty('_id');
           expect(firstDecision.description).toBe('We have decided to save the environment');
           expect(firstDecision['tags']).toEqual(expect.arrayContaining([["public"], ["sysadmin"]]));
 
-          let secondDecision = response.body[1];
+          let secondDecision = _.find(response.body, {code: 'VANILLA'});
           expect(secondDecision).toHaveProperty('_id');
           expect(secondDecision.description).toBe('Ice cream store will be built');
           expect(secondDecision['tags']).toEqual(expect.arrayContaining([["public"]]));
