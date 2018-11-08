@@ -1,6 +1,7 @@
 const test_helper = require('./test_helper');
 const app = test_helper.app;
 const mongoose = require('mongoose');
+const commentFactory = require('./factories/comment_factory').factory;
 const request = require('supertest');
 let swaggerParams = {
   swagger: {
@@ -10,7 +11,7 @@ let swaggerParams = {
               userID: null
           },
           fields: {
-            value: ['comment']
+            value: ['comment', 'name']
           }
       }
   }
@@ -20,7 +21,7 @@ let publicSwaggerParams = {
   swagger: {
       params:{
         fields: {
-          value: ['comment']
+          value: ['comment', 'name']
         }
       }
   }
@@ -92,45 +93,43 @@ app.put('/api/comment/:id/unpublish', function(req, res) {
 });
 
 
-const comments = [
+const commentsData = [
   { code: 'SPECIAL', name: 'Special Comment', comment: 'This Comment is so special', tags: [['public'], ['sysadmin']], isDeleted: false },
   { code: 'VANILLA', name: 'Vanilla Ice Cream', comment: 'I like Ice Cream', tags: [['public']], isDeleted: false },
   { code: 'TOP_SECRET', name: 'Confidential Comment', comment: 'This is a secret govt project',tags: [['sysadmin']], isDeleted: false },
   { code: 'DELETED', name: 'Deleted Comment', comment: 'Trolling for suckers', tags: [['public'],['sysadmin']], isDeleted: true },
 ];
 
-function setupComments(comments) {
+function setupComments(commentsData) {
   return new Promise(function(resolve, reject) {
-      Comment.collection.insert(comments, function(error, documents) {
-          if (error) { 
-              reject(error); 
-          }
-          else {
-              resolve(documents) 
-          }
-      });
+    commentFactory.createMany('comment', commentsData).then(commentsArray => {
+      resolve(commentsArray);
+    }).catch(error => {
+      reject(error);
+    });
   });
 };
 
 describe('GET /Comment', () => {
   test('returns a list of non-deleted, public and sysadmin Comments', done => {
-    setupComments(comments).then((documents) => {
+    setupComments(commentsData).then((documents) => {
       request(app).get('/api/comment')
       .expect(200)
       .then(response =>{
         expect(response.body.length).toEqual(3);
+        console.log(response.body)
 
-        let firstComment = response.body[0];
+        let firstComment = _.find(response.body, {name: 'Special Comment'});
         expect(firstComment).toHaveProperty('_id');
         expect(firstComment.comment).toBe('This Comment is so special');
         expect(firstComment['tags']).toEqual(expect.arrayContaining([["public"], ["sysadmin"]]));
 
-        let secondComment = response.body[1];
+        let secondComment = _.find(response.body, {name: 'Vanilla Ice Cream'});
         expect(secondComment).toHaveProperty('_id');
         expect(secondComment.comment).toBe('I like Ice Cream');
         expect(secondComment['tags']).toEqual(expect.arrayContaining([["public"]]));
 
-        let secretComment = response.body[2];
+        let secretComment = _.find(response.body, {name: 'Confidential Comment'});
         expect(secretComment).toHaveProperty('_id');
         expect(secretComment.comment).toBe('This is a secret govt project');
         expect(secretComment['tags']).toEqual(expect.arrayContaining([["sysadmin"]]));
@@ -152,7 +151,7 @@ describe('GET /Comment', () => {
 
 describe('GET /comment/{id}', () => {
   test('returns a single Comment ', done => {
-    setupComments(comments).then((documents) => {
+    setupComments(commentsData).then((documents) => {
       Comment.findOne({code: 'SPECIAL'}).exec(function(error, comment) {
         let specialCommentId = comment._id.toString();
         let uri = '/api/comment/' + specialCommentId;
@@ -177,7 +176,7 @@ describe('GET /comment/{id}', () => {
 
 describe('GET /public/comment', () => {
   test('returns a list of public Comments', done => {
-    setupComments(comments).then((documents) => {
+    setupComments(commentsData).then((documents) => {
       request(app).get('/api/public/comment')
       .expect(200)
       .then(response =>{
@@ -210,7 +209,7 @@ describe('GET /public/comment', () => {
 
 describe('GET /public/comment/{id}', () => {
   test('returns a single public comment ', done => {
-    setupComments(comments).then((documents) => {
+    setupComments(commentsData).then((documents) => {
       Comment.findOne({code: 'SPECIAL'}).exec(function(error, comment) {
         if (error) { 
           console.log(error);
@@ -355,6 +354,7 @@ describe('PUT /comment/:id', () => {
     });
     return existingComment.save();
   });
+  
   test('updates an comment', done => {
     let updateData = {
         comment: 'This application is amazing!'

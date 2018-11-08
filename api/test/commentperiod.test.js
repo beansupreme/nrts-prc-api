@@ -2,6 +2,7 @@ const test_helper = require('./test_helper');
 const userFactory = require('./factories/user_factory').factory;
 const app = test_helper.app;
 const mongoose = require('mongoose');
+const commentPeriodFactory = require('./factories/comment_period_factory').factory;
 const request = require('supertest');
 let swaggerParams = {
   swagger: {
@@ -102,23 +103,20 @@ app.delete('/api/commentperiod/:id', function(req, res) {
   return commentPeriodController.protectedDelete(swaggerWithExtraParams, res);
 });
 
-const commentPeriods = [
+const commentPeriodsData = [
   { code: 'SPECIAL', name: 'Special Comment', description: 'This Comment is so special', tags: [['public'], ['sysadmin']], isDeleted: false },
   { code: 'VANILLA', name: 'Vanilla Ice Cream', description: 'I like Ice Cream', tags: [['public']], isDeleted: false },
   { code: 'TOP_SECRET', name: 'Confidential Comment', description: 'This is a secret govt project',tags: [['sysadmin']], isDeleted: false },
   { code: 'DELETED', name: 'Deleted Comment', description: 'Trolling for suckers', tags: [['public'],['sysadmin']], isDeleted: true },
 ];
 
-function setupCommentPeriods(commentPeriods) {
+function setupCommentPeriods(commentPeriodsData) {
   return new Promise(function(resolve, reject) {
-      CommentPeriod.collection.insert(commentPeriods, function(error, documents) {
-          if (error) { 
-              reject(error); 
-          }
-          else {
-              resolve(documents) 
-          }
-      });
+    commentPeriodFactory.createMany('commentperiod', commentPeriodsData).then(commentPeriodsArray => {
+      resolve(commentPeriodsArray);
+    }).catch(error => {
+      reject(error);
+    });
   });
 };
 
@@ -136,23 +134,23 @@ function setupUser() {
 
 describe('GET /commentperiod', () => {
   test('returns a list of non-deleted, public and sysadmin comment periods', done => {
-    setupCommentPeriods(commentPeriods).then((documents) => {
+    setupCommentPeriods(commentPeriodsData).then((documents) => {
       request(app).get('/api/commentperiod')
       .expect(200)
       .then(response =>{
         expect(response.body.length).toEqual(3);
 
-        let firstCommentPeriod = response.body[0];
+        let firstCommentPeriod = _.find(response.body, {name: 'Special Comment'});
         expect(firstCommentPeriod).toHaveProperty('_id');
         expect(firstCommentPeriod.description).toBe('This Comment is so special');
         expect(firstCommentPeriod['tags']).toEqual(expect.arrayContaining([["public"], ["sysadmin"]]));
 
-        let secondCommentPeriod = response.body[1];
+        let secondCommentPeriod = _.find(response.body, {name: 'Vanilla Ice Cream'});
         expect(secondCommentPeriod).toHaveProperty('_id');
         expect(secondCommentPeriod.description).toBe('I like Ice Cream');
         expect(secondCommentPeriod['tags']).toEqual(expect.arrayContaining([["public"]]));
-
-        let secretCommentPeriod = response.body[2];
+        
+        let secretCommentPeriod = _.find(response.body, {name: 'Confidential Comment'});
         expect(secretCommentPeriod).toHaveProperty('_id');
         expect(secretCommentPeriod.description).toBe('This is a secret govt project');
         expect(secretCommentPeriod['tags']).toEqual(expect.arrayContaining([["sysadmin"]]));
@@ -174,7 +172,7 @@ describe('GET /commentperiod', () => {
 
 describe('GET /commentperiod/{id}', () => {
   test('returns a single CommentPeriod ', done => {
-    setupCommentPeriods(commentPeriods).then((documents) => {
+    setupCommentPeriods(commentPeriodsData).then((documents) => {
       CommentPeriod.findOne({code: 'SPECIAL'}).exec(function(error, commentPeriod) {
         let specialCommentId = commentPeriod._id.toString();
         let uri = '/api/commentperiod/' + specialCommentId;
@@ -199,18 +197,18 @@ describe('GET /commentperiod/{id}', () => {
 
 describe('GET /public/commentperiod', () => {
   test('returns a list of public Comment periods', done => {
-    setupCommentPeriods(commentPeriods).then((documents) => {
+    setupCommentPeriods(commentPeriodsData).then((documents) => {
       request(app).get('/api/public/commentperiod')
       .expect(200)
       .then(response =>{
         expect(response.body.length).toEqual(2);
 
-        let firstCommentPeriod = response.body[0];
+        let firstCommentPeriod = _.find(response.body, {name: 'Special Comment'});
         expect(firstCommentPeriod).toHaveProperty('_id');
         expect(firstCommentPeriod.description).toBe('This Comment is so special');
         expect(firstCommentPeriod['tags']).toEqual(expect.arrayContaining([["public"], ["sysadmin"]]));
 
-        let secondCommentPeriod = response.body[1];
+        let secondCommentPeriod = _.find(response.body, {name: 'Vanilla Ice Cream'});
         expect(secondCommentPeriod).toHaveProperty('_id');
         expect(secondCommentPeriod.description).toBe('I like Ice Cream');
         expect(secondCommentPeriod['tags']).toEqual(expect.arrayContaining([["public"]]));
@@ -232,7 +230,7 @@ describe('GET /public/commentperiod', () => {
 
 describe('GET /public/commentperiod/{id}', () => {
   test('returns a single public comment period ', done => {
-    setupCommentPeriods(commentPeriods).then((documents) => {
+    setupCommentPeriods(commentPeriodsData).then((documents) => {
       CommentPeriod.findOne({code: 'SPECIAL'}).exec(function(error, commentPeriod) {
         if (error) { 
           console.log(error);
@@ -466,7 +464,7 @@ describe('PUT /commentperiod/:id/unpublish', () => {
 
 describe('DELETE /commentperiod/:id', () => {
   test('It soft deletes a comment period', done => {
-    setupCommentPeriods(commentPeriods).then((documents) => {
+    setupCommentPeriods(commentPeriodsData).then((documents) => {
       CommentPeriod.findOne({code: 'VANILLA'}).exec(function(error, commentPeriod) {
         let vanillaCommentPeriodId = commentPeriod._id.toString();
         let uri = '/api/commentperiod/' + vanillaCommentPeriodId;
