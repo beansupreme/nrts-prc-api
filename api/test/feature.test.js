@@ -41,8 +41,16 @@ app.get('/api/feature/:id', function(req, res) {
 });
 
 app.get('/api/public/feature', function(req, res) {
-  let publicSwaggerParams = test_helper.createPublicSwaggerParams(fieldNames);
-  return featureController.publicGet(publicSwaggerParams, res);
+  let fields = {
+    'applicationId': req.query.applicationId
+  }
+  if (req.query.tantalisId) {
+    fields['tantalisId'] = _.toInteger(req.query.tantalisId)
+  }
+
+  let extraFields = test_helper.buildParams(fields);
+  let params = test_helper.createPublicSwaggerParams(fieldNames, extraFields);
+  return featureController.publicGet(params, res);
 });
 
 app.get('/api/public/feature/:id', function(req, res) {
@@ -331,6 +339,39 @@ describe('GET /public/feature', () => {
         expect(response.body).toEqual([]);
         done();
       });
+  });
+
+  test('can search based on tantalisId', done => {
+    setupFeatures().then((documents) => {
+      request(app).get('/api/public/feature')
+        .query({tantalisId: 333333})
+        .expect(200)
+        .then(response => {
+          expect(response.body.length).toBe(1);
+          let firstFeature = response.body[0];
+          expect(firstFeature).not.toHaveProperty('tags');
+          expect(firstFeature._id).not.toBeNull();
+          done();
+        });
+    });
+  });
+
+  test('can search based on applicationId', done => {
+    setupFeatures().then((documents) => {
+      expect(specialApplicationId).not.toBeNull();
+      expect(specialApplicationId).not.toBeUndefined();
+      request(app)
+        .get('/api/public/feature')
+        .query({applicationId: specialApplicationId.toString()})
+        .expect(200)
+        .then(response => {
+          console.log(response.body);
+          expect(response.body.length).toBe(1);
+          let firstFeature = response.body[0];
+          expect(firstFeature).not.toHaveProperty('tags');
+          done();
+        });
+    });
   });
 
   test.skip('allows pagination', done => {

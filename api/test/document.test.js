@@ -2,6 +2,9 @@ const test_helper = require('./test_helper');
 const app = test_helper.app;
 const mongoose = require('mongoose');
 const documentFactory = require('./factories/document_factory').factory;
+const commentFactory = require('./factories/comment_factory').factory;
+const applicationFactory = require('./factories/application_factory').factory;
+const decisionFactory = require('./factories/decision_factory').factory;
 const request = require('supertest');
 
 const _ = require('lodash');
@@ -108,8 +111,85 @@ describe('GET /document', () => {
       });
   });
 
-  describe.skip('querying for nested objects', () => {
+  test('can search based on comment', done => {
+    commentFactory
+      .create('comment', {name: 'Detailed comment with attachment'})
+      .then(comment => {
+        let documentAttrs = {
+          _comment: comment.id, 
+          displayName: 'Attatchment for comment', 
+          documentFileName: 'long_list.docx'
+        };
+        documentFactory
+          .create('document', documentAttrs, {public: false})
+          .then(document => {
+            request(app)
+              .get('/api/document')
+              .query({_comment: comment.id})
+              .expect(200)
+              .then(response => {
+                expect(response.body.length).toBe(1);
+                let resultingDocument = response.body[0];
+                expect(resultingDocument).not.toBeNull();
+                expect(resultingDocument.displayName).toBe('Attatchment for comment');
+                done();
+              });
+          });
+      });
+  });
 
+  test('can search based on application', done => {
+    applicationFactory
+      .create('application', {name: 'Detailed application with attachment'})
+      .then(application => {
+        let documentAttrs = {
+          _application: application.id, 
+          displayName: 'Attachment for Application', 
+          documentFileName: 'long_list.docx'
+        };
+        documentFactory
+          .create('document', documentAttrs, {public: false})
+          .then(document => {
+            request(app)
+              .get('/api/document')
+              .query({_application: application.id})
+              .expect(200)
+              .then(response => {
+                expect(response.body.length).toBe(1);
+                let resultingDocument = response.body[0];
+                expect(resultingDocument).not.toBeNull();
+                expect(resultingDocument.displayName).toBe('Attachment for Application');
+                done();
+              });
+          });
+      });
+  });
+
+  test('can search based on decision', done => {
+    decisionFactory
+      .create('decision', {name: 'Detailed decision with attachment'})
+      .then(decision => {
+        let documentAttrs = {
+          _decision: decision.id, 
+          displayName: 'Attachment for Decision', 
+          documentFileName: 'long_list.docx'
+        };
+        documentFactory
+          .create('document', documentAttrs, {public: false})
+          .then(document => {
+            request(app)
+              .get('/api/document')
+              .query({_decision: decision.id})
+              .expect(200)
+              .then(response => {
+                expect(response.body.length).toBe(1);
+                let resultingDocument = response.body[0];
+                expect(resultingDocument).not.toBeNull();
+                expect(resultingDocument.displayName).toBe('Attachment for Decision');
+                done();
+              });
+          });
+      });
   });
 });
 
@@ -129,8 +209,8 @@ describe('GET /document/{id}', () => {
             expect(responseObject).toMatchObject({
               '_id': documentId,
               'tags': expect.arrayContaining([['public'], ['sysadmin']]),
-              // 'displayName': 'Special File',
-              // 'documentFileName': 'special_file.csv'
+              'displayName': 'Special File',
+              'documentFileName': 'special_file.csv'
             });
             done();
           });
@@ -171,6 +251,87 @@ describe('GET /public/document', () => {
         done();
       });
   });
+
+  test('can search based on comment', done => {
+    commentFactory
+      .create('comment', {name: 'Detailed comment with attachment'})
+      .then(comment => {
+        let documentAtts = {
+          _comment: comment.id,
+          displayName: 'Attatchment for comment',
+          documentFileName: 'long_list.docx'
+        };
+        documentFactory
+          .create('document', documentAtts, {public: true})
+          .then(document => {
+            request(app)
+              .get('/api/public/document')
+              .query({_comment: comment.id})
+              .expect(200)
+              .then(response => {
+                expect(response.body.length).toBe(1);
+                let resultingDocument = response.body[0];
+                expect(resultingDocument).not.toBeNull();
+                expect(resultingDocument.displayName).toBe('Attatchment for comment');
+                done();
+              });
+          });
+      });
+  });
+
+  test('can search based on application', done => {
+    applicationFactory
+      .create('application', {name: 'Detailed application with attachment'})
+      .then(application => {
+        let documentAttrs = {
+          _application: application.id,
+          displayName: 'Attachment for Application',
+          documentFileName: 'long_list.docx'
+        };
+        documentFactory
+          .create('document', documentAttrs, {public: true})
+          .then(document => {
+            request(app)
+              .get('/api/public/document')
+              .query({_application: application.id})
+              .expect(200)
+              .then(response => {
+                expect(response.body.length).toBe(1);
+                let resultingDocument = response.body[0];
+                expect(resultingDocument).not.toBeNull();
+                expect(resultingDocument.displayName).toBe('Attachment for Application');
+                done();
+              });
+          });
+      });
+  });
+
+  test('can search based on decision', done => {
+    decisionFactory
+      .create('decision', {name: 'Detailed decision with attachment'})
+      .then(decision => {
+        let documentAttrs = {
+          _decision: decision.id,
+          displayName: 'Attachment for Decision',
+          documentFileName: 'long_list.docx'
+        };
+        documentFactory
+          .create('document', documentAttrs, {public: true})
+          .then(document => {
+            request(app)
+              .get('/api/public/document')
+              .query({_decision: decision.id})
+              .expect(200)
+              .then(response => {
+                expect(response.body.length).toBe(1);
+                let resultingDocument = response.body[0];
+                expect(resultingDocument).not.toBeNull();
+                expect(resultingDocument.displayName).toBe('Attachment for Decision');
+                done();
+              });
+          });
+      });
+  });
 });
 
 describe('GET /public/document/{id}', () => {
@@ -193,8 +354,8 @@ describe('GET /public/document/{id}', () => {
             expect(responseObj).toMatchObject({
               '_id': specialDocumentId,
               'tags': expect.arrayContaining([['public'], ['sysadmin']]),
-              // 'displayName': 'Special File',
-              // 'documentFileName': 'special_file.csv'
+              'displayName': 'Special File',
+              'documentFileName': 'special_file.csv'
             });
             done();
           });

@@ -3,6 +3,7 @@ const userFactory = require('./factories/user_factory').factory;
 const app = test_helper.app;
 const mongoose = require('mongoose');
 const commentPeriodFactory = require('./factories/comment_period_factory').factory;
+const applicationFactory = require('./factories/application_factory').factory;
 const request = require('supertest');
 const fieldNames = ['name', 'description'];
 const _ = require('lodash');
@@ -120,6 +121,32 @@ describe('GET /commentperiod', () => {
     });
   });
 
+  test('can search based on application', done => {
+    applicationFactory
+      .create('application', {name: 'Detailed application with comment period'})
+      .then(application => {
+        let commentPeriodAttrs = {
+          _application: application.id, 
+          name: 'Controversial Comment Period'
+        };
+        commentPeriodFactory
+          .create('commentperiod', commentPeriodAttrs, {public: false})
+          .then(commentperiod => {
+            request(app)
+              .get('/api/commentperiod')
+              .query({_application: application.id})
+              .expect(200)
+              .then(response => {
+                expect(response.body.length).toBe(1);
+                let resultingCommentPeriod = response.body[0];
+                expect(resultingCommentPeriod).not.toBeNull();
+                expect(resultingCommentPeriod.name).toBe('Controversial Comment Period');
+                done();
+              });
+          });
+      });
+  });
+
   test('returns an empty array when there are no comment periods', done => {
     request(app).get('/api/commentperiod')
       .expect(200)
@@ -215,6 +242,32 @@ describe('GET /public/commentperiod/{id}', () => {
           });
       });;
     });
+  });
+
+  test('can search based on application', done => {
+    applicationFactory
+      .create('application', {name: 'Detailed application with comment period'})
+      .then(application => {
+        let commentPeriodAttrs = {
+          _application: application.id, 
+          name: 'Controversial Comment Period'
+        };
+        commentPeriodFactory
+          .create('commentperiod', commentPeriodAttrs, {public: true})
+          .then(commentperiod => {
+            request(app)
+              .get('/api/public/commentperiod')
+              .query({_application: application.id})
+              .expect(200)
+              .then(response => {
+                expect(response.body.length).toBe(1);
+                let resultingCommentPeriod = response.body[0];
+                expect(resultingCommentPeriod).not.toBeNull();
+                expect(resultingCommentPeriod.name).toBe('Controversial Comment Period');
+                done();
+              });
+          });
+      });
   });
 });
 

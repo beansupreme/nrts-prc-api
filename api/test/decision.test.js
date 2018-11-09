@@ -1,6 +1,7 @@
 const test_helper = require('./test_helper');
 const app = test_helper.app;
 const decisionFactory = require('./factories/decision_factory').factory;
+const applicationFactory = require('./factories/application_factory').factory;
 const mongoose = require('mongoose');
 const request = require('supertest');
 
@@ -113,8 +114,31 @@ describe('GET /decision', () => {
       });
   });
 
-  test.skip('querying for application', done => {
-
+  test('can search based on application', done => {
+    applicationFactory
+      .create('application', {name: 'Detailed application with decision'})
+      .then(application => {
+        let decisionAttrs = {
+          _application: application.id, 
+          description: 'Decision with Attachment', 
+          name: 'Important Decision'
+        };
+        decisionFactory
+          .create('decision', decisionAttrs, {public: false})
+          .then(decision => {
+            request(app)
+              .get('/api/decision')
+              .query({_application: application.id})
+              .expect(200)
+              .then(response => {
+                expect(response.body.length).toBe(1);
+                let resultingDecision = response.body[0];
+                expect(resultingDecision).not.toBeNull();
+                expect(resultingDecision.description).toBe('Decision with Attachment');
+                done();
+              });
+          });
+      });
   });
 });
 
@@ -163,6 +187,33 @@ describe('GET /public/decision', () => {
           done()
         });
     });
+  });
+
+  test('can search based on application', done => {
+    applicationFactory
+      .create('application', {name: 'Detailed application with decision'})
+      .then(application => {
+        let decisionAttrs = {
+          _application: application.id, 
+          description: 'Decision with Attachment', 
+          name: 'Important Decision'
+        };
+        decisionFactory
+          .create('decision', decisionAttrs, {public: true})
+          .then(decision => {
+            request(app)
+              .get('/api/public/decision')
+              .query({_application: application.id})
+              .expect(200)
+              .then(response => {
+                expect(response.body.length).toBe(1);
+                let resultingDecision = response.body[0];
+                expect(resultingDecision).not.toBeNull();
+                expect(resultingDecision.description).toBe('Decision with Attachment');
+                done();
+              });
+          });
+      });
   });
 
   test('returns an empty array when there are no Decisions', done => {
