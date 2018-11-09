@@ -144,7 +144,7 @@ describe('POST /organization', () => {
       name: 'Victoria',
       code: 'victoria'
     };
-    request(app).post('/api/organization', orgObject)
+    request(app).post('/api/organization')
       .send(orgObject)
       .expect(200).then(response => {
         expect(response.body).toHaveProperty('_id');
@@ -161,7 +161,7 @@ describe('POST /organization', () => {
       name: 'Victoria',
       code: 'victoria'
     };
-    request(app).post('/api/organization', orgObject)
+    request(app).post('/api/organization')
       .send(orgObject)
       .expect(200).then(response => {
         expect(response.body).toHaveProperty('_id');
@@ -184,7 +184,7 @@ describe('PUT /organization/:id', () => {
     };
     existingOrg.save().then(organization => {
       let uri = '/api/organization/' + organization._id;
-      request(app).put(uri, updateData)
+      request(app).put(uri)
         .send(updateData)
         .then(response => {
           // expect(response.body.name).toBe('Exciting Org');

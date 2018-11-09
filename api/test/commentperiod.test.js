@@ -229,7 +229,7 @@ describe('POST /commentperiod', () => {
       description: 'Victoria is a great place'
     };
 
-    request(app).post('/api/commentperiod', commentPeriodObj)
+    request(app).post('/api/commentperiod')
       .send(commentPeriodObj)
       .expect(200).then(response => {
         expect(response.body).toHaveProperty('_id');
@@ -247,7 +247,7 @@ describe('POST /commentperiod', () => {
       name: 'Victoria',
       description: 'Victoria is a great place'
     };
-    request(app).post('/api/commentperiod', commentPeriodObj)
+    request(app).post('/api/commentperiod')
       .send(commentPeriodObj)
       .expect(200).then(response => {
         expect(response.body).toHaveProperty('_id');
@@ -336,7 +336,7 @@ describe('PUT /commentperiod/:id', () => {
     };
     existingCommentPeriod.save().then(commentPeriod => {
       let uri = '/api/commentperiod/' + commentPeriod._id;
-      request(app).put(uri, updateData)
+      request(app).put(uri)
         .send(updateData)
         .then(response => {
           CommentPeriod.findById(commentPeriod._id).exec(function(error, updatedCommentPeriod) {

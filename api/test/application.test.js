@@ -279,7 +279,7 @@ describe('POST /application', () => {
     });
 
     test('creates a new application', done => {
-      request(app).post('/api/application', applicationObj)
+      request(app).post('/api/application')
         .send(applicationObj)
         .expect(200).then(response => {
           expect(response.body).toHaveProperty('_id');
@@ -292,7 +292,7 @@ describe('POST /application', () => {
     });
 
     test('sets geographical properties', done => {
-      request(app).post('/api/application', applicationObj)
+      request(app).post('/api/application')
         .send(applicationObj)
         .expect(200).then(response => {
           expect(response.body).toHaveProperty('_id');
@@ -309,7 +309,7 @@ describe('POST /application', () => {
     });
 
     test('it sets the _addedBy to the person creating the application', done => {
-      request(app).post('/api/application', applicationObj)
+      request(app).post('/api/application')
         .send(applicationObj)
         .expect(200).then(response => {
           expect(response.body).toHaveProperty('_id');
@@ -323,7 +323,7 @@ describe('POST /application', () => {
     });
 
     test('defaults to sysadmin for tags and review tags', done => {
-      request(app).post('/api/application', applicationObj)
+      request(app).post('/api/application')
         .send(applicationObj)
         .expect(200).then(response => {
           expect(response.body).toHaveProperty('_id');
@@ -341,7 +341,7 @@ describe('POST /application', () => {
     });
 
     test('saves features on the application', done => {
-      request(app).post('/api/application', applicationObj)
+      request(app).post('/api/application')
         .send(applicationObj)
         .expect(200).then(response => {
           expect(response.body).toHaveProperty('_id');
@@ -362,7 +362,7 @@ describe('POST /application', () => {
 
     test.skip('throws 500 when an error is caught', done => {
 
-      request(app).post('/api/application', applicationObj)
+      request(app).post('/api/application')
         .send(applicationObj)
         .expect(500)
         .catch(errorResponse => {
@@ -387,7 +387,7 @@ describe('PUT /application/:id', () => {
     };
     existingApplication.save().then(application => {
       let uri = '/api/application/' + application._id;
-      request(app).put(uri, updateData)
+      request(app).put(uri)
         .send(updateData)
         .then(response => {
           Application.findOne({name: 'Exciting Application'}).exec(function(error, application) {
@@ -425,7 +425,7 @@ describe('PUT /application/:id', () => {
     };
     existingApplication.save().then(application => {
       let uri = '/api/application/' + application._id;
-      request(app).put(uri, updateData)
+      request(app).put(uri)
         .send(updateData)
         .then(response => {
           Application.findById(existingApplication._id).exec(function(error, application) {

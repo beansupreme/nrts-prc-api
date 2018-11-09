@@ -230,7 +230,7 @@ describe('POST /decision', () => {
       name: 'Victoria',
       description: 'Victoria is a great place'
     };
-    request(app).post('/api/decision', decisionObj)
+    request(app).post('/api/decision')
       .send(decisionObj)
       .expect(200).then(response => {
         expect(response.body).toHaveProperty('_id');
@@ -293,7 +293,7 @@ describe('PUT /decision/:id', () => {
     };
     existingDecision.save().then(decision => {
       let uri = '/api/decision/' + decision._id;
-      request(app).put(uri, updateData)
+      request(app).put(uri)
         .send(updateData)
         .then(response => {
           Decision.findById(decision._id).exec(function(error, updatedDecision) {
