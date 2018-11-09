@@ -209,7 +209,7 @@ describe('POST /public/comment', () => {
       name: 'Victoria',
       comment: 'Victoria is a great place'
     };
-    request(app).post('/api/public/comment', commentObj)
+    request(app).post('/api/public/comment')
       .send(commentObj)
       .expect(200).then(response => {
         expect(response.body).toHaveProperty('_id');
@@ -227,7 +227,7 @@ describe('POST /public/comment', () => {
       name: 'Victoria',
       comment: 'Victoria is a great place'
     };
-    request(app).post('/api/public/comment', commentObj)
+    request(app).post('/api/public/comment')
       .send(commentObj)
       .expect(200).then(response => {
         expect(response.body).toHaveProperty('_id');
@@ -246,7 +246,7 @@ describe('POST /public/comment', () => {
         name: 'Victoria',
         comment: 'Victoria is a great place'
       };
-      request(app).post('/api/public/comment', commentObj)
+      request(app).post('/api/public/comment')
         .send(commentObj)
         .expect(200).then(response => {
           expect(response.body).toHaveProperty('_id');
@@ -268,7 +268,7 @@ describe('POST /public/comment', () => {
         name: 'Victoria',
         comment: 'Victoria is a great place'
       };
-      request(app).post('/api/public/comment', commentObj)
+      request(app).post('/api/public/comment')
         .send(commentObj)
         .expect(200).then(response => {
           expect(response.body).toHaveProperty('_id');
@@ -296,7 +296,7 @@ describe('POST /public/comment', () => {
         }
       };
 
-      request(app).post('/api/public/comment', commentObj)
+      request(app).post('/api/public/comment')
         .send(commentObj)
         .expect(200).then(response => {
           expect(response.body).toHaveProperty('_id');

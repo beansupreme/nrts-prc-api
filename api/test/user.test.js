@@ -114,7 +114,7 @@ describe('POST /user', () => {
       username: 'lisahelps',
       password: 'Need_more_bike_lanes123'
     };
-    request(app).post('/api/user', userObject)
+    request(app).post('/api/user')
       .send(userObject)
       .expect(200).then(response => {
         expect(response.body).toHaveProperty('_id');
@@ -137,7 +137,7 @@ describe('POST /user', () => {
       username: 'goshdarnnewguy',
       password: null
     };
-    request(app).post('/api/user', userObject)
+    request(app).post('/api/user')
       .send(userObject)
       .then(response => {
         expect(response.status).toEqual(403)

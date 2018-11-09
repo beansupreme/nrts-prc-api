@@ -448,7 +448,7 @@ describe('POST /feature', () => {
         TENURE_LOCATION: "2975 Jutland Rd",
       }
     };
-    request(app).post('/api/feature', featureObj)
+    request(app).post('/api/feature')
       .send(featureObj)
       .expect(200).then(response => {
         expect(response.body).toHaveProperty('_id');
@@ -476,7 +476,7 @@ describe('POST /feature', () => {
         TENURE_LOCATION: "2975 Jutland Rd",
       }
     };
-    request(app).post('/api/feature', featureObj)
+    request(app).post('/api/feature')
       .send(featureObj)
       .expect(200).then(response => {
         expect(response.body).toHaveProperty('_id');
@@ -522,7 +522,7 @@ describe('PUT /feature/:id', () => {
 
     featureFactory.create('feature', featureData).then(featureObj => {
       let uri = '/api/feature/' + featureObj._id;
-      request(app).put(uri, updateData)
+      request(app).put(uri)
         .send(updateData)
         .then(response => {
           Feature.findOne({applicationID: existingApplicationId}).exec(function(error, feature) {
@@ -557,7 +557,7 @@ describe('PUT /feature/:id', () => {
     };
     featureFactory.create('feature', featureData).then(feature => {
       let uri = '/api/feature/' + feature._id;
-      request(app).put(uri, updateData)
+      request(app).put(uri)
         .send(updateData)
         .then(response => {
           Feature.findById(feature._id).exec(function(error, updatedFeature) {
