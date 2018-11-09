@@ -2,6 +2,7 @@ const test_helper = require('./test_helper');
 const app = test_helper.app;
 const mongoose = require('mongoose');
 const commentFactory = require('./factories/comment_factory').factory;
+const commentPeriodFactory = require('./factories/comment_period_factory').factory;
 const request = require('supertest');
 
 const fieldNames = ['comment', 'name'];
@@ -114,6 +115,30 @@ describe('GET /Comment', () => {
         done();
       });
   });
+
+  test('can search based on commentPeriodId', done => {
+    commentPeriodFactory
+      .create('commentperiod', { name: 'Open Season comment period'})
+      .then(commentPeriod => {
+        commentFactory.create('comment', { name: 'Rah Rah very angry!', _commentPeriod: commentPeriod.id}).then(comment => {
+          request(app)
+            .get('/api/comment')
+            .query({_commentPeriod: commentPeriod.id})
+            .expect(200)
+            .then(response => {
+              expect(response.body.length).toBe(1);
+              let resultingComment = response.body[0];
+              expect(resultingComment).not.toBeNull();
+              expect(resultingComment.name).toBe('Rah Rah very angry!');
+              done();
+            });
+        });
+      });
+  });
+
+  describe.skip('Sorting and paginating', () => {
+    
+  });
 });
 
 describe('GET /comment/{id}', () => {
@@ -132,7 +157,7 @@ describe('GET /comment/{id}', () => {
             expect(responseObject).toMatchObject({
               '_id': specialCommentId,
               'tags': expect.arrayContaining([['public'], ['sysadmin']]),
-              // comment: 'This Comment is so special'
+              comment: 'This Comment is so special'
             });
             done();
           });
@@ -194,7 +219,7 @@ describe('GET /public/comment/{id}', () => {
             expect(responseObj).toMatchObject({
               '_id': specialCommentId,
               'tags': expect.arrayContaining([['public'], ['sysadmin']]),
-              // comment: 'This Comment is so special'
+              comment: 'This Comment is so special'
             });
             done();
           });
