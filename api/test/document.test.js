@@ -5,7 +5,9 @@ const documentFactory = require('./factories/document_factory').factory;
 const commentFactory = require('./factories/comment_factory').factory;
 const applicationFactory = require('./factories/application_factory').factory;
 const decisionFactory = require('./factories/decision_factory').factory;
+const userFactory = require('./factories/user_factory').factory;
 const request = require('supertest');
+const shell = require('shelljs');
 
 const _ = require('lodash');
 
@@ -35,6 +37,24 @@ app.get('/api/document/:id', function(req, res) {
   return documentController.protectedGet(paramsWithDocId(req), res);
 });
 
+app.get('/api/document/:id/download', function(req, res) {
+  return documentController.protectedDownload(paramsWithDocId(req), res);
+});
+
+app.post('/api/document', function(req, res) {
+  let extraFields = test_helper.buildParams(req.body);
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields, userID);
+
+  return documentController.protectedPost(params, res);
+});
+
+app.put('/api/document/:id', function(req, res) {
+  let extraFields = test_helper.buildParams(req.body);
+  _.merge(extraFields, {'docId': { 'value': req.params.id}});
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields, userID);
+  return documentController.protectedPut(params, res);
+});
+
 app.get('/api/public/document', function(req, res) {
   let publicSwaggerParams = test_helper.createPublicSwaggerParams(fieldNames);
   return documentController.publicGet(publicSwaggerParams, res);
@@ -42,6 +62,17 @@ app.get('/api/public/document', function(req, res) {
 
 app.get('/api/public/document/:id', function(req, res) {
   return documentController.publicGet(publicParamsWithDocId(req), res);
+});
+
+app.get('/api/public/document/:id/download', function(req, res) {
+  return documentController.publicDownload(publicParamsWithDocId(req), res);
+});
+
+app.post('/api/public/document', function(req, res) {
+  let extraFields = test_helper.buildParams(req.body);
+  let params = test_helper.createPublicSwaggerParams(fieldNames, extraFields, userID);
+
+  return documentController.unProtectedPost(params, res);
 });
 
 app.put('/api/document/:id/publish', function(req, res) {
@@ -73,6 +104,31 @@ function setupDocuments(documentsData) {
   });
 };
 
+var authUser;
+
+function setupUser() {
+  return new Promise(function(resolve, reject) {
+    if (_.isUndefined(authUser)) {
+      userFactory.create('user').then(user => {
+        authUser = user;
+        userID = user._id;
+        resolve();
+      }).catch(error => {
+        reject(error);
+      });
+    } else {
+      resolve();
+    }
+  });
+}
+
+function cleanupTestDocumentFiles() {
+  shell.rm('./api/test/uploads/*.txt');
+}
+
+afterAll(() => {
+  cleanupTestDocumentFiles();
+});
 
 describe('GET /document', () => {
   test('returns a list of non-deleted, public and sysadmin documents', done => {
@@ -116,8 +172,8 @@ describe('GET /document', () => {
       .create('comment', {name: 'Detailed comment with attachment'})
       .then(comment => {
         let documentAttrs = {
-          _comment: comment.id, 
-          displayName: 'Attatchment for comment', 
+          _comment: comment.id,
+          displayName: 'Attatchment for comment',
           documentFileName: 'long_list.docx'
         };
         documentFactory
@@ -143,8 +199,8 @@ describe('GET /document', () => {
       .create('application', {name: 'Detailed application with attachment'})
       .then(application => {
         let documentAttrs = {
-          _application: application.id, 
-          displayName: 'Attachment for Application', 
+          _application: application.id,
+          displayName: 'Attachment for Application',
           documentFileName: 'long_list.docx'
         };
         documentFactory
@@ -170,8 +226,8 @@ describe('GET /document', () => {
       .create('decision', {name: 'Detailed decision with attachment'})
       .then(decision => {
         let documentAttrs = {
-          _decision: decision.id, 
-          displayName: 'Attachment for Decision', 
+          _decision: decision.id,
+          displayName: 'Attachment for Decision',
           documentFileName: 'long_list.docx'
         };
         documentFactory
@@ -364,13 +420,106 @@ describe('GET /public/document/{id}', () => {
   });
 });
 
-describe.skip('POST /document', () => {
-  test.skip('sets the relationships to applicatoin, comment, and decision', done => {
+describe('POST /document', () => {
+  let applicationId,
+    commentId,
+    decisionId;
+    
+  beforeEach(done => {
+    setupUser().then(() => {
+      applicationFactory.create('application', {}).then(application => {
+        applicationId = application.id;
+        commentFactory.create('comment', {}).then(comment => {
+          commentId = comment.id;
+        }).then(() => {
+          decisionFactory.create('decision', {}).then(decision => {
+            decisionId = decision.id;
+            done();
+          });
+        });
+      });
+    });
+  });
+  
+  function buildDocumentParams() {
+    return {
+      '_application': applicationId,
+      '_comment': commentId,
+      '_decision': decisionId,
+      'displayName': 'Critically Important File',
+      'upfile': {
+        'mimetype': 'text/plain',
+        'originalname': 'test_document.txt'
+      }
+    };
+  }
 
+  test('uploads a document', done => {
+    let documentParams = buildDocumentParams();
+    request(app).post('/api/document')
+      .send(documentParams)
+      .expect(200)
+      .then(response => {
+        expect(response.body.id).toBeDefined();
+        expect(response.body.id).not.toBeNull();
+        Document.findById(response.body.id).exec(function(error, document) {
+          expect(document).not.toBeNull();
+          expect(document.displayName).toBe('Critically Important File');
+          done();
+        });
+      });
   });
 
-  test.skip('sets the displayName, documentFileName, internalMim ', done => {
+  test('sets the relationships to application, comment, and decision', done => {
+    let documentParams = buildDocumentParams();
+    request(app).post('/api/document')
+      .send(documentParams)
+      .expect(200)
+      .then(response => {
+        expect(response.body.id).not.toBeNull();
+        Document.findById(response.body.id).exec(function(error, document) {
+          expect(document).not.toBeNull();
+          expect(document._application.toString()).toBe(applicationId)
+          expect(document._comment.toString()).toBe(commentId)
+          expect(document._decision.toString()).toBe(decisionId)
+          done();
+        });
+      });
+  });
 
+  test('sets the file metadata ', done => {
+    let documentParams = buildDocumentParams();
+    request(app).post('/api/document')
+      .send(documentParams)
+      .expect(200)
+      .then(response => {
+        expect(response.body.id).not.toBeNull();
+        Document.findById(response.body.id).exec(function(error, document) {
+          expect(document).not.toBeNull();
+          expect(document.internalMime).toBe('text/plain');
+
+          // Test that intenalURL is a  numeric UUID with a .txt extension
+          expect(document.internalURL).toMatch(/.\/uploads\/([0-9\s:])+(.txt)$/);
+          
+          expect(document.documentFileName).toBe('test_document.txt');
+          done();
+        });
+      });
+  });
+
+  test('sets the _addedBy to the user uploading the file', done => {
+    let documentParams = buildDocumentParams();
+    request(app).post('/api/document')
+      .send(documentParams)
+      .expect(200).then(response => {
+        expect(response.body.id).not.toBeNull();
+        Document.findById(response.body.id).exec(function(error, document) {
+          expect(document).not.toBeNull();
+          expect(document._addedBy).not.toBeNull();
+          expect(document._addedBy).toEqual(userID);
+          done();
+        });
+      });
   });
 
   test.skip('Runs a virus scan', done => {
@@ -378,21 +527,188 @@ describe.skip('POST /document', () => {
   });
 });
 
+// It appears this endpoint does not work. 
+// The "doc" variable in the protectedPut method is not defined.
 describe.skip('PUT /document/{:id}', () => {
-
-});
-
-describe.skip('GET /document/{:id}/download', () => {
-
-});
-
-describe.skip('POST /public/document', () => {
-  test.skip('sets the relationships to applicatoin, comment, and decision', done => {
-
+  let applicationId,
+    commentId,
+    decisionId;
+    
+  beforeEach(done => {
+    setupUser().then(() => {
+      applicationFactory.create('application', {}).then(application => {
+        applicationId = application.id;
+        commentFactory.create('comment', {}).then(comment => {
+          commentId = comment.id;
+        }).then(() => {
+          decisionFactory.create('decision', {}).then(decision => {
+            decisionId = decision.id;
+            done();
+          });
+        });
+      });
+    });
   });
 
-  test.skip('sets the displayName, documentFileName, internalMim ', done => {
+  function buildDocumentParams() {
+    return {
+      '_application': applicationId,
+      '_comment': commentId,
+      '_decision': decisionId,
+      'displayName': 'Exciting new Document!',
+      'upfile': {
+        'mimetype': 'text/plain',
+        'originalname': 'test_document.txt'
+      }
+    };
+  }
+  let documentData = {
+    '_application': null,
+    '_comment': null,
+    '_decision': null,
+    '_addedBy': null,
+    'displayName': 'Boring old document',
+  }
 
+  test('can update a document', done => {
+    let documentParams = buildDocumentParams();
+    documentFactory.create('document', documentData).then(document => {
+      request(app).put('/api/document/' + document.id)
+        .send(documentParams)
+        .expect(200)
+        .then(response => {
+          Document.findById(document.id).exec(function(error, updatedDocument) {
+            expect(updatedDocument).not.toBeNull();
+            expect(updatedDocument.displayName).toBe('Exciting new Document!');
+            done();
+          });
+        });
+    })
+  });
+});
+
+describe('GET /document/{:id}/download', () => {
+  test('allows downloading a public document', done => {
+    documentFactory.create('document', {}, {public: true}).then(document => {
+      let uri = '/api/document/' + document.id + '/download';
+      request(app).get(uri)
+        .expect(200).then(response => {
+          expect(response.body).not.toBeNull();
+          done()
+        });
+    });
+  });
+
+  test('allows downloading a protected document', done => {
+    documentFactory.create('document', {}, {public: false}).then(protectedDoc => {
+      let uri = '/api/document/' + protectedDoc.id + '/download';
+      request(app).get(uri)
+        .expect(200).then(response => {
+          expect(response.body).not.toBeNull();
+          done()
+        });
+    });
+  });
+
+  test('404s when trying to download a document which does not exist', done => {
+    request(app).get('/api/document/5aa80486343ef100195e5451/download')
+      .expect(404)
+      .then(response => {
+        done()
+      });
+  });
+
+  test('404s when trying to download without an id', done => {
+    request(app).get('/api/document//download')
+      .expect(404).then(response => {
+        done()
+      });
+  });
+});
+
+describe('POST /public/document', () => {
+  let applicationId,
+    commentId,
+    decisionId;
+    
+  beforeEach(done => {
+    applicationFactory.create('application', {}).then(application => {
+      applicationId = application.id;
+      commentFactory.create('comment', {}).then(comment => {
+        commentId = comment.id;
+      }).then(() => {
+        decisionFactory.create('decision', {}).then(decision => {
+          decisionId = decision.id;
+          done();
+        });
+      });
+    });
+  });
+  
+  function buildDocumentParams() {
+    return {
+      '_application': applicationId,
+      '_comment': commentId,
+      '_decision': decisionId,
+      'displayName': 'Critically Important File',
+      'upfile': {
+        'mimetype': 'text/plain',
+        'originalname': 'test_document.txt'
+      }
+    };
+  }
+
+  test('uploads a document', done => {
+    let documentParams = buildDocumentParams();
+    request(app).post('/api/public/document')
+      .send(documentParams)
+      .expect(200)
+      .then(response => {
+        expect(response.body.id).toBeDefined();
+        expect(response.body.id).not.toBeNull();
+        Document.findById(response.body.id).exec(function(error, document) {
+          expect(document).not.toBeNull();
+          expect(document.displayName).toBe('Critically Important File');
+          done();
+        });
+      });
+  });
+
+  test('sets the relationships to application, comment, and decision', done => {
+    let documentParams = buildDocumentParams();
+    request(app).post('/api/public/document')
+      .send(documentParams)
+      .expect(200)
+      .then(response => {
+        expect(response.body.id).not.toBeNull();
+        Document.findById(response.body.id).exec(function(error, document) {
+          expect(document).not.toBeNull();
+          expect(document._application.toString()).toBe(applicationId)
+          expect(document._comment.toString()).toBe(commentId)
+          expect(document._decision.toString()).toBe(decisionId)
+          done();
+        });
+      });
+  });
+
+  test('sets the file metadata ', done => {
+    let documentParams = buildDocumentParams();
+    request(app).post('/api/public/document')
+      .send(documentParams)
+      .expect(200)
+      .then(response => {
+        expect(response.body.id).not.toBeNull();
+        Document.findById(response.body.id).exec(function(error, document) {
+          expect(document).not.toBeNull();
+          expect(document.internalMime).toBe('text/plain');
+
+          // Test that intenalURL is a  numeric UUID with a .txt extension
+          expect(document.internalURL).toMatch(/.\/uploads\/([0-9\s:])+(.txt)$/);
+          
+          expect(document.documentFileName).toBe('test_document.txt');
+          done();
+        });
+      });
   });
 
   test.skip('Runs a virus scan', done => {
@@ -400,8 +716,42 @@ describe.skip('POST /public/document', () => {
   });
 });
 
-describe.skip('GET /public/document/{:id}/download', () => {
+describe('GET /public/document/{:id}/download', () => {
+  test('allows downloading a document', done => {
+    documentFactory.create('document', {}, {public: true}).then(document => {
+      let uri = '/api/public/document/' + document.id + '/download';
+      request(app).get(uri)
+        .expect(200).then(response => {
+          expect(response.body).not.toBeNull();
+          done()
+        });
+    });
+  });
 
+  test('404s when trying to download a document which is not public', done => {
+    documentFactory.create('document', {}, {public: false}).then(document => {
+      let uri = '/api/public/document/' + document.id + '/download';
+      request(app).get(uri)
+        .expect(404).then(response => {
+          done()
+        });
+    });
+  });
+
+  test('404s when trying to download a document which does not exist', done => {
+    request(app).get('/api/public/document/5aa80486343ef100195e5451/download')
+      .expect(404)
+      .then(response => {
+        done()
+      });
+  });
+
+  test('404s when trying to download without an id', done => {
+    request(app).get('/api/public/document//download')
+      .expect(404).then(response => {
+        done()
+      });
+  });
 });
 
 describe('PUT /document/:id/publish', () => {
@@ -490,7 +840,7 @@ describe('DELETE /document/:id', () => {
     });
   });
 
-  test('404s if the decision does not exist', done => {
+  test('404s if the document does not exist', done => {
     let uri = '/api/document/' + 'NON_EXISTENT_ID';
     request(app)
       .delete(uri)

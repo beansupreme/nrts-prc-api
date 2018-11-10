@@ -5,7 +5,8 @@ factory.define('document', Document, buildOptions => {
   let attrs = {
     displayName: factory.chance('name'),
     documentFileName: factory.seq('Document.documentFileName', (n) => `test-document-${n}.docx`),
-    tags: [['sysadmin']]    
+    internalURL: './api/test/fixtures/test_document.txt',
+    tags: [['sysadmin']]
   };
   
   if (buildOptions.public) {
