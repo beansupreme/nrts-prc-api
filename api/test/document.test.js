@@ -7,6 +7,7 @@ const applicationFactory = require('./factories/application_factory').factory;
 const decisionFactory = require('./factories/decision_factory').factory;
 const userFactory = require('./factories/user_factory').factory;
 const request = require('supertest');
+const shell = require('shelljs');
 
 const _ = require('lodash');
 
@@ -121,6 +122,13 @@ function setupUser() {
   });
 }
 
+function cleanupTestDocumentFiles() {
+  shell.rm('./api/test/uploads/*.txt');
+}
+
+afterAll(() => {
+  cleanupTestDocumentFiles();
+});
 
 describe('GET /document', () => {
   test('returns a list of non-deleted, public and sysadmin documents', done => {
