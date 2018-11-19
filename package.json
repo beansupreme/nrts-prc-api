@@ -41,7 +41,7 @@
   },
   "scripts": {
     "start": "node app",
-    "test": "jest api",
+    "test": "UPLOAD_DIRECTORY='./api/test/uploads/' jest api --runInBand",
     "test:debug": "node --inspect node_modules/.bin/jest --runInBand",
     "coverage": "jest --collectCoverageFrom=api/**.js --coverage api"
   },
