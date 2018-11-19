@@ -1,6 +1,6 @@
-## ACRD API (master)
+## ACRFD API (master)
 
-Minimal API for the ACRD [Public](https://github.com/bcgov/nrts-prc-public) and [Admin](https://github.com/bcgov/nrts-prc-admin) apps
+Minimal API for the ACRFD [Public](https://github.com/bcgov/nrts-prc-public) and [Admin](https://github.com/bcgov/nrts-prc-admin) apps
 
 ## How to run this
  
