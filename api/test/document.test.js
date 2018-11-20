@@ -123,7 +123,9 @@ function setupUser() {
 }
 
 function cleanupTestDocumentFiles() {
-  shell.rm('./api/test/uploads/*.txt');
+  if (shell.test('-d', './api/test/uploads/') && shell.test('-d', './api/test/uploads/*.txt')) {
+    shell.rm('./api/test/uploads/*.txt');
+  }
 }
 
 afterAll(() => {
