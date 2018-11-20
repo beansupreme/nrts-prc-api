@@ -7,19 +7,36 @@ const mongooseOpts = require('../../config/mongoose_options').mongooseOptions;
 const mongoDbMemoryServer = require('mongodb-memory-server');
 const _ = require('lodash');
 const app = express();
-
+let mongoServer;
+mongoose.Promise = global.Promise;
 setupAppServer();
 
-beforeAll(done => {
-  setupInMemoryMongoServer(done);
+beforeAll(async () => {
+  mongoServer = new mongoDbMemoryServer.default({
+    instance: {},
+    binary: {
+      version: '3.2.21', // Mongo Version
+    },
+  });
+  const mongoUri = await mongoServer.getConnectionString();
+  await mongoose.connect(mongoUri, mongooseOpts, (err) => {
+    if (err) console.error(err);
+  });
 });
 
 afterEach(done => {
   if (mongoose.connection && mongoose.connection.db) {
-    dbCleaner.clean(mongoose.connection.db, () => {done()});
+    dbCleaner.clean(mongoose.connection.db, () => {
+      done()
+    });
   } else {
     done();
   }
+});
+
+afterAll(async () => {
+  await mongoose.disconnect();
+  await mongoServer.stop();
 });
 
 function setupAppServer() {
@@ -27,36 +44,6 @@ function setupAppServer() {
     extended: true
   }));
   app.use(bodyParser.json());
-}
-
-function setupInMemoryMongoServer(done) {
-  const mongoServer = new mongoDbMemoryServer.default({
-    instance: {},
-    binary: {
-      version: '3.2.21', // Mongo Version
-    },
-  });
-  mongoServer.getConnectionString().then((mongoUri) => {
-    mongoose.Promise = global.Promise;
-
-    mongoose.connect(mongoUri, mongooseOpts);
-
-    mongoose.connection.on('error', (e) => {
-      console.log('*********** ERROR ***********');
-
-      if (e.message.code === 'ETIMEDOUT') {
-        console.log(e);
-        mongoose.connect(mongoUri, mongooseOpts);
-      }
-      console.log(e);
-      done(error);
-    });
-
-    mongoose.connection.once('open', () => {
-      console.log(`MongoDB successfully connected to ${mongoUri}`);
-      done();
-    });
-  });
 }
 
 function createSwaggerParams(fieldNames, additionalValues = {}, userID = null) {
