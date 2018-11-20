@@ -251,604 +251,604 @@ describe('GET /document', () => {
   });
 });
 
-describe('GET /document/{id}', () => {
-  test('returns a single Document ', done => {
-    setupDocuments(documentsData).then((documents) => {
-      Document.findOne({displayName: 'Special File'}).exec(function(error, document) {
-        let documentId = document._id.toString();
-        let uri = '/api/document/' + documentId;
+// describe('GET /document/{id}', () => {
+//   test('returns a single Document ', done => {
+//     setupDocuments(documentsData).then((documents) => {
+//       Document.findOne({displayName: 'Special File'}).exec(function(error, document) {
+//         let documentId = document._id.toString();
+//         let uri = '/api/document/' + documentId;
 
-        request(app)
-          .get(uri)
-          .expect(200)
-          .then(response => {
-            expect(response.body.length).toBe(1);
-            let responseObject = response.body[0];
-            expect(responseObject).toMatchObject({
-              '_id': documentId,
-              'tags': expect.arrayContaining([['public'], ['sysadmin']]),
-              'displayName': 'Special File',
-              'documentFileName': 'special_file.csv'
-            });
-            done();
-          });
-      });;
-    });
-  });
-});
+//         request(app)
+//           .get(uri)
+//           .expect(200)
+//           .then(response => {
+//             expect(response.body.length).toBe(1);
+//             let responseObject = response.body[0];
+//             expect(responseObject).toMatchObject({
+//               '_id': documentId,
+//               'tags': expect.arrayContaining([['public'], ['sysadmin']]),
+//               'displayName': 'Special File',
+//               'documentFileName': 'special_file.csv'
+//             });
+//             done();
+//           });
+//       });;
+//     });
+//   });
+// });
 
-describe('GET /public/document', () => {
-  test('returns a list of public documents', done => {
-    setupDocuments(documentsData).then((documents) => {
-      request(app).get('/api/public/document')
-        .expect(200)
-        .then(response => {
-          expect(response.body.length).toEqual(2);
+// describe('GET /public/document', () => {
+//   test('returns a list of public documents', done => {
+//     setupDocuments(documentsData).then((documents) => {
+//       request(app).get('/api/public/document')
+//         .expect(200)
+//         .then(response => {
+//           expect(response.body.length).toEqual(2);
 
-          let firstDocument = _.find(response.body, {documentFileName: 'special_file.csv'});
-          expect(firstDocument).toHaveProperty('_id');
-          expect(firstDocument.displayName).toBe('Special File');
-          expect(firstDocument['tags']).toEqual(expect.arrayContaining([["public"], ["sysadmin"]]));
+//           let firstDocument = _.find(response.body, {documentFileName: 'special_file.csv'});
+//           expect(firstDocument).toHaveProperty('_id');
+//           expect(firstDocument.displayName).toBe('Special File');
+//           expect(firstDocument['tags']).toEqual(expect.arrayContaining([["public"], ["sysadmin"]]));
 
-          let secondDocument = _.find(response.body, {documentFileName: 'vanilla.docx'});
-          expect(secondDocument).toHaveProperty('_id');
-          expect(secondDocument.displayName).toBe('Vanilla Ice Cream');
-          expect(secondDocument['tags']).toEqual(expect.arrayContaining([["public"]]));
+//           let secondDocument = _.find(response.body, {documentFileName: 'vanilla.docx'});
+//           expect(secondDocument).toHaveProperty('_id');
+//           expect(secondDocument.displayName).toBe('Vanilla Ice Cream');
+//           expect(secondDocument['tags']).toEqual(expect.arrayContaining([["public"]]));
 
-          done()
-        });
-    });
-  });
+//           done()
+//         });
+//     });
+//   });
 
-  test('returns an empty array when there are no Documents', done => {
-    request(app).get('/api/public/document')
-      .expect(200)
-      .then(response => {
-        expect(response.body.length).toBe(0);
-        expect(response.body).toEqual([]);
-        done();
-      });
-  });
+//   test('returns an empty array when there are no Documents', done => {
+//     request(app).get('/api/public/document')
+//       .expect(200)
+//       .then(response => {
+//         expect(response.body.length).toBe(0);
+//         expect(response.body).toEqual([]);
+//         done();
+//       });
+//   });
 
-  test('can search based on comment', done => {
-    commentFactory
-      .create('comment', {name: 'Detailed comment with attachment'})
-      .then(comment => {
-        let documentAtts = {
-          _comment: comment.id,
-          displayName: 'Attatchment for comment',
-          documentFileName: 'long_list.docx'
-        };
-        documentFactory
-          .create('document', documentAtts, {public: true})
-          .then(document => {
-            request(app)
-              .get('/api/public/document')
-              .query({_comment: comment.id})
-              .expect(200)
-              .then(response => {
-                expect(response.body.length).toBe(1);
-                let resultingDocument = response.body[0];
-                expect(resultingDocument).not.toBeNull();
-                expect(resultingDocument.displayName).toBe('Attatchment for comment');
-                done();
-              });
-          });
-      });
-  });
+//   test('can search based on comment', done => {
+//     commentFactory
+//       .create('comment', {name: 'Detailed comment with attachment'})
+//       .then(comment => {
+//         let documentAtts = {
+//           _comment: comment.id,
+//           displayName: 'Attatchment for comment',
+//           documentFileName: 'long_list.docx'
+//         };
+//         documentFactory
+//           .create('document', documentAtts, {public: true})
+//           .then(document => {
+//             request(app)
+//               .get('/api/public/document')
+//               .query({_comment: comment.id})
+//               .expect(200)
+//               .then(response => {
+//                 expect(response.body.length).toBe(1);
+//                 let resultingDocument = response.body[0];
+//                 expect(resultingDocument).not.toBeNull();
+//                 expect(resultingDocument.displayName).toBe('Attatchment for comment');
+//                 done();
+//               });
+//           });
+//       });
+//   });
 
-  test('can search based on application', done => {
-    applicationFactory
-      .create('application', {name: 'Detailed application with attachment'})
-      .then(application => {
-        let documentAttrs = {
-          _application: application.id,
-          displayName: 'Attachment for Application',
-          documentFileName: 'long_list.docx'
-        };
-        documentFactory
-          .create('document', documentAttrs, {public: true})
-          .then(document => {
-            request(app)
-              .get('/api/public/document')
-              .query({_application: application.id})
-              .expect(200)
-              .then(response => {
-                expect(response.body.length).toBe(1);
-                let resultingDocument = response.body[0];
-                expect(resultingDocument).not.toBeNull();
-                expect(resultingDocument.displayName).toBe('Attachment for Application');
-                done();
-              });
-          });
-      });
-  });
+//   test('can search based on application', done => {
+//     applicationFactory
+//       .create('application', {name: 'Detailed application with attachment'})
+//       .then(application => {
+//         let documentAttrs = {
+//           _application: application.id,
+//           displayName: 'Attachment for Application',
+//           documentFileName: 'long_list.docx'
+//         };
+//         documentFactory
+//           .create('document', documentAttrs, {public: true})
+//           .then(document => {
+//             request(app)
+//               .get('/api/public/document')
+//               .query({_application: application.id})
+//               .expect(200)
+//               .then(response => {
+//                 expect(response.body.length).toBe(1);
+//                 let resultingDocument = response.body[0];
+//                 expect(resultingDocument).not.toBeNull();
+//                 expect(resultingDocument.displayName).toBe('Attachment for Application');
+//                 done();
+//               });
+//           });
+//       });
+//   });
 
-  test('can search based on decision', done => {
-    decisionFactory
-      .create('decision', {name: 'Detailed decision with attachment'})
-      .then(decision => {
-        let documentAttrs = {
-          _decision: decision.id,
-          displayName: 'Attachment for Decision',
-          documentFileName: 'long_list.docx'
-        };
-        documentFactory
-          .create('document', documentAttrs, {public: true})
-          .then(document => {
-            request(app)
-              .get('/api/public/document')
-              .query({_decision: decision.id})
-              .expect(200)
-              .then(response => {
-                expect(response.body.length).toBe(1);
-                let resultingDocument = response.body[0];
-                expect(resultingDocument).not.toBeNull();
-                expect(resultingDocument.displayName).toBe('Attachment for Decision');
-                done();
-              });
-          });
-      });
-  });
-});
+//   test('can search based on decision', done => {
+//     decisionFactory
+//       .create('decision', {name: 'Detailed decision with attachment'})
+//       .then(decision => {
+//         let documentAttrs = {
+//           _decision: decision.id,
+//           displayName: 'Attachment for Decision',
+//           documentFileName: 'long_list.docx'
+//         };
+//         documentFactory
+//           .create('document', documentAttrs, {public: true})
+//           .then(document => {
+//             request(app)
+//               .get('/api/public/document')
+//               .query({_decision: decision.id})
+//               .expect(200)
+//               .then(response => {
+//                 expect(response.body.length).toBe(1);
+//                 let resultingDocument = response.body[0];
+//                 expect(resultingDocument).not.toBeNull();
+//                 expect(resultingDocument.displayName).toBe('Attachment for Decision');
+//                 done();
+//               });
+//           });
+//       });
+//   });
+// });
 
-describe('GET /public/document/{id}', () => {
-  test('returns a single public document ', done => {
-    setupDocuments(documentsData).then((documents) => {
-      Document.findOne({displayName: 'Special File'}).exec(function(error, document) {
-        if (error) {
-          console.log(error);
-          throw error
-        }
-        let specialDocumentId = document._id.toString();
-        let uri = '/api/public/document/' + specialDocumentId;
+// describe('GET /public/document/{id}', () => {
+//   test('returns a single public document ', done => {
+//     setupDocuments(documentsData).then((documents) => {
+//       Document.findOne({displayName: 'Special File'}).exec(function(error, document) {
+//         if (error) {
+//           console.log(error);
+//           throw error
+//         }
+//         let specialDocumentId = document._id.toString();
+//         let uri = '/api/public/document/' + specialDocumentId;
 
-        request(app)
-          .get(uri)
-          .expect(200)
-          .then(response => {
-            expect(response.body.length).toBe(1);
-            let responseObj = response.body[0];
-            expect(responseObj).toMatchObject({
-              '_id': specialDocumentId,
-              'tags': expect.arrayContaining([['public'], ['sysadmin']]),
-              'displayName': 'Special File',
-              'documentFileName': 'special_file.csv'
-            });
-            done();
-          });
-      });;
-    });
-  });
-});
+//         request(app)
+//           .get(uri)
+//           .expect(200)
+//           .then(response => {
+//             expect(response.body.length).toBe(1);
+//             let responseObj = response.body[0];
+//             expect(responseObj).toMatchObject({
+//               '_id': specialDocumentId,
+//               'tags': expect.arrayContaining([['public'], ['sysadmin']]),
+//               'displayName': 'Special File',
+//               'documentFileName': 'special_file.csv'
+//             });
+//             done();
+//           });
+//       });;
+//     });
+//   });
+// });
 
-describe('POST /document', () => {
-  let applicationId,
-    commentId,
-    decisionId;
+// describe('POST /document', () => {
+//   let applicationId,
+//     commentId,
+//     decisionId;
     
-  beforeEach(done => {
-    setupUser().then(() => {
-      applicationFactory.create('application', {}).then(application => {
-        applicationId = application.id;
-        commentFactory.create('comment', {}).then(comment => {
-          commentId = comment.id;
-        }).then(() => {
-          decisionFactory.create('decision', {}).then(decision => {
-            decisionId = decision.id;
-            done();
-          });
-        });
-      });
-    });
-  });
+//   beforeEach(done => {
+//     setupUser().then(() => {
+//       applicationFactory.create('application', {}).then(application => {
+//         applicationId = application.id;
+//         commentFactory.create('comment', {}).then(comment => {
+//           commentId = comment.id;
+//         }).then(() => {
+//           decisionFactory.create('decision', {}).then(decision => {
+//             decisionId = decision.id;
+//             done();
+//           });
+//         });
+//       });
+//     });
+//   });
   
-  function buildDocumentParams() {
-    return {
-      '_application': applicationId,
-      '_comment': commentId,
-      '_decision': decisionId,
-      'displayName': 'Critically Important File',
-      'upfile': {
-        'mimetype': 'text/plain',
-        'originalname': 'test_document.txt'
-      }
-    };
-  }
+//   function buildDocumentParams() {
+//     return {
+//       '_application': applicationId,
+//       '_comment': commentId,
+//       '_decision': decisionId,
+//       'displayName': 'Critically Important File',
+//       'upfile': {
+//         'mimetype': 'text/plain',
+//         'originalname': 'test_document.txt'
+//       }
+//     };
+//   }
 
-  test('uploads a document', done => {
-    let documentParams = buildDocumentParams();
-    request(app).post('/api/document')
-      .send(documentParams)
-      .expect(200)
-      .then(response => {
-        expect(response.body.id).toBeDefined();
-        expect(response.body.id).not.toBeNull();
-        Document.findById(response.body.id).exec(function(error, document) {
-          expect(document).not.toBeNull();
-          expect(document.displayName).toBe('Critically Important File');
-          done();
-        });
-      });
-  });
+//   test('uploads a document', done => {
+//     let documentParams = buildDocumentParams();
+//     request(app).post('/api/document')
+//       .send(documentParams)
+//       .expect(200)
+//       .then(response => {
+//         expect(response.body.id).toBeDefined();
+//         expect(response.body.id).not.toBeNull();
+//         Document.findById(response.body.id).exec(function(error, document) {
+//           expect(document).not.toBeNull();
+//           expect(document.displayName).toBe('Critically Important File');
+//           done();
+//         });
+//       });
+//   });
 
-  test('sets the relationships to application, comment, and decision', done => {
-    let documentParams = buildDocumentParams();
-    request(app).post('/api/document')
-      .send(documentParams)
-      .expect(200)
-      .then(response => {
-        expect(response.body.id).not.toBeNull();
-        Document.findById(response.body.id).exec(function(error, document) {
-          expect(document).not.toBeNull();
-          expect(document._application.toString()).toBe(applicationId)
-          expect(document._comment.toString()).toBe(commentId)
-          expect(document._decision.toString()).toBe(decisionId)
-          done();
-        });
-      });
-  });
+//   test('sets the relationships to application, comment, and decision', done => {
+//     let documentParams = buildDocumentParams();
+//     request(app).post('/api/document')
+//       .send(documentParams)
+//       .expect(200)
+//       .then(response => {
+//         expect(response.body.id).not.toBeNull();
+//         Document.findById(response.body.id).exec(function(error, document) {
+//           expect(document).not.toBeNull();
+//           expect(document._application.toString()).toBe(applicationId)
+//           expect(document._comment.toString()).toBe(commentId)
+//           expect(document._decision.toString()).toBe(decisionId)
+//           done();
+//         });
+//       });
+//   });
 
-  test('sets the file metadata ', done => {
-    let documentParams = buildDocumentParams();
-    request(app).post('/api/document')
-      .send(documentParams)
-      .expect(200)
-      .then(response => {
-        expect(response.body.id).not.toBeNull();
-        Document.findById(response.body.id).exec(function(error, document) {
-          expect(document).not.toBeNull();
-          expect(document.internalMime).toBe('text/plain');
+//   test('sets the file metadata ', done => {
+//     let documentParams = buildDocumentParams();
+//     request(app).post('/api/document')
+//       .send(documentParams)
+//       .expect(200)
+//       .then(response => {
+//         expect(response.body.id).not.toBeNull();
+//         Document.findById(response.body.id).exec(function(error, document) {
+//           expect(document).not.toBeNull();
+//           expect(document.internalMime).toBe('text/plain');
 
-          // Test that intenalURL is a  numeric UUID with a .txt extension
-          expect(document.internalURL).toMatch(/.\/uploads\/([0-9\s:])+(.txt)$/);
+//           // Test that intenalURL is a  numeric UUID with a .txt extension
+//           expect(document.internalURL).toMatch(/.\/uploads\/([0-9\s:])+(.txt)$/);
           
-          expect(document.documentFileName).toBe('test_document.txt');
-          done();
-        });
-      });
-  });
+//           expect(document.documentFileName).toBe('test_document.txt');
+//           done();
+//         });
+//       });
+//   });
 
-  test('sets the _addedBy to the user uploading the file', done => {
-    let documentParams = buildDocumentParams();
-    request(app).post('/api/document')
-      .send(documentParams)
-      .expect(200).then(response => {
-        expect(response.body.id).not.toBeNull();
-        Document.findById(response.body.id).exec(function(error, document) {
-          expect(document).not.toBeNull();
-          expect(document._addedBy).not.toBeNull();
-          expect(document._addedBy).toEqual(userID);
-          done();
-        });
-      });
-  });
+//   test('sets the _addedBy to the user uploading the file', done => {
+//     let documentParams = buildDocumentParams();
+//     request(app).post('/api/document')
+//       .send(documentParams)
+//       .expect(200).then(response => {
+//         expect(response.body.id).not.toBeNull();
+//         Document.findById(response.body.id).exec(function(error, document) {
+//           expect(document).not.toBeNull();
+//           expect(document._addedBy).not.toBeNull();
+//           expect(document._addedBy).toEqual(userID);
+//           done();
+//         });
+//       });
+//   });
 
-  test.skip('Runs a virus scan', done => {
+//   test.skip('Runs a virus scan', done => {
 
-  });
-});
+//   });
+// });
 
-// It appears this endpoint does not work. 
-// The "doc" variable in the protectedPut method is not defined.
-describe.skip('PUT /document/{:id}', () => {
-  let applicationId,
-    commentId,
-    decisionId;
+// // It appears this endpoint does not work. 
+// // The "doc" variable in the protectedPut method is not defined.
+// describe.skip('PUT /document/{:id}', () => {
+//   let applicationId,
+//     commentId,
+//     decisionId;
     
-  beforeEach(done => {
-    setupUser().then(() => {
-      applicationFactory.create('application', {}).then(application => {
-        applicationId = application.id;
-        commentFactory.create('comment', {}).then(comment => {
-          commentId = comment.id;
-        }).then(() => {
-          decisionFactory.create('decision', {}).then(decision => {
-            decisionId = decision.id;
-            done();
-          });
-        });
-      });
-    });
-  });
+//   beforeEach(done => {
+//     setupUser().then(() => {
+//       applicationFactory.create('application', {}).then(application => {
+//         applicationId = application.id;
+//         commentFactory.create('comment', {}).then(comment => {
+//           commentId = comment.id;
+//         }).then(() => {
+//           decisionFactory.create('decision', {}).then(decision => {
+//             decisionId = decision.id;
+//             done();
+//           });
+//         });
+//       });
+//     });
+//   });
 
-  function buildDocumentParams() {
-    return {
-      '_application': applicationId,
-      '_comment': commentId,
-      '_decision': decisionId,
-      'displayName': 'Exciting new Document!',
-      'upfile': {
-        'mimetype': 'text/plain',
-        'originalname': 'test_document.txt'
-      }
-    };
-  }
-  let documentData = {
-    '_application': null,
-    '_comment': null,
-    '_decision': null,
-    '_addedBy': null,
-    'displayName': 'Boring old document',
-  }
+//   function buildDocumentParams() {
+//     return {
+//       '_application': applicationId,
+//       '_comment': commentId,
+//       '_decision': decisionId,
+//       'displayName': 'Exciting new Document!',
+//       'upfile': {
+//         'mimetype': 'text/plain',
+//         'originalname': 'test_document.txt'
+//       }
+//     };
+//   }
+//   let documentData = {
+//     '_application': null,
+//     '_comment': null,
+//     '_decision': null,
+//     '_addedBy': null,
+//     'displayName': 'Boring old document',
+//   }
 
-  test('can update a document', done => {
-    let documentParams = buildDocumentParams();
-    documentFactory.create('document', documentData).then(document => {
-      request(app).put('/api/document/' + document.id)
-        .send(documentParams)
-        .expect(200)
-        .then(response => {
-          Document.findById(document.id).exec(function(error, updatedDocument) {
-            expect(updatedDocument).not.toBeNull();
-            expect(updatedDocument.displayName).toBe('Exciting new Document!');
-            done();
-          });
-        });
-    })
-  });
-});
+//   test('can update a document', done => {
+//     let documentParams = buildDocumentParams();
+//     documentFactory.create('document', documentData).then(document => {
+//       request(app).put('/api/document/' + document.id)
+//         .send(documentParams)
+//         .expect(200)
+//         .then(response => {
+//           Document.findById(document.id).exec(function(error, updatedDocument) {
+//             expect(updatedDocument).not.toBeNull();
+//             expect(updatedDocument.displayName).toBe('Exciting new Document!');
+//             done();
+//           });
+//         });
+//     })
+//   });
+// });
 
-describe('GET /document/{:id}/download', () => {
-  test('allows downloading a public document', done => {
-    documentFactory.create('document', {}, {public: true}).then(document => {
-      let uri = '/api/document/' + document.id + '/download';
-      request(app).get(uri)
-        .expect(200).then(response => {
-          expect(response.body).not.toBeNull();
-          done()
-        });
-    });
-  });
+// describe('GET /document/{:id}/download', () => {
+//   test('allows downloading a public document', done => {
+//     documentFactory.create('document', {}, {public: true}).then(document => {
+//       let uri = '/api/document/' + document.id + '/download';
+//       request(app).get(uri)
+//         .expect(200).then(response => {
+//           expect(response.body).not.toBeNull();
+//           done()
+//         });
+//     });
+//   });
 
-  test('allows downloading a protected document', done => {
-    documentFactory.create('document', {}, {public: false}).then(protectedDoc => {
-      let uri = '/api/document/' + protectedDoc.id + '/download';
-      request(app).get(uri)
-        .expect(200).then(response => {
-          expect(response.body).not.toBeNull();
-          done()
-        });
-    });
-  });
+//   test('allows downloading a protected document', done => {
+//     documentFactory.create('document', {}, {public: false}).then(protectedDoc => {
+//       let uri = '/api/document/' + protectedDoc.id + '/download';
+//       request(app).get(uri)
+//         .expect(200).then(response => {
+//           expect(response.body).not.toBeNull();
+//           done()
+//         });
+//     });
+//   });
 
-  test('404s when trying to download a document which does not exist', done => {
-    request(app).get('/api/document/5aa80486343ef100195e5451/download')
-      .expect(404)
-      .then(response => {
-        done()
-      });
-  });
+//   test('404s when trying to download a document which does not exist', done => {
+//     request(app).get('/api/document/5aa80486343ef100195e5451/download')
+//       .expect(404)
+//       .then(response => {
+//         done()
+//       });
+//   });
 
-  test('404s when trying to download without an id', done => {
-    request(app).get('/api/document//download')
-      .expect(404).then(response => {
-        done()
-      });
-  });
-});
+//   test('404s when trying to download without an id', done => {
+//     request(app).get('/api/document//download')
+//       .expect(404).then(response => {
+//         done()
+//       });
+//   });
+// });
 
-describe('POST /public/document', () => {
-  let applicationId,
-    commentId,
-    decisionId;
+// describe('POST /public/document', () => {
+//   let applicationId,
+//     commentId,
+//     decisionId;
     
-  beforeEach(done => {
-    applicationFactory.create('application', {}).then(application => {
-      applicationId = application.id;
-      commentFactory.create('comment', {}).then(comment => {
-        commentId = comment.id;
-      }).then(() => {
-        decisionFactory.create('decision', {}).then(decision => {
-          decisionId = decision.id;
-          done();
-        });
-      });
-    });
-  });
+//   beforeEach(done => {
+//     applicationFactory.create('application', {}).then(application => {
+//       applicationId = application.id;
+//       commentFactory.create('comment', {}).then(comment => {
+//         commentId = comment.id;
+//       }).then(() => {
+//         decisionFactory.create('decision', {}).then(decision => {
+//           decisionId = decision.id;
+//           done();
+//         });
+//       });
+//     });
+//   });
   
-  function buildDocumentParams() {
-    return {
-      '_application': applicationId,
-      '_comment': commentId,
-      '_decision': decisionId,
-      'displayName': 'Critically Important File',
-      'upfile': {
-        'mimetype': 'text/plain',
-        'originalname': 'test_document.txt'
-      }
-    };
-  }
+//   function buildDocumentParams() {
+//     return {
+//       '_application': applicationId,
+//       '_comment': commentId,
+//       '_decision': decisionId,
+//       'displayName': 'Critically Important File',
+//       'upfile': {
+//         'mimetype': 'text/plain',
+//         'originalname': 'test_document.txt'
+//       }
+//     };
+//   }
 
-  test('uploads a document', done => {
-    let documentParams = buildDocumentParams();
-    request(app).post('/api/public/document')
-      .send(documentParams)
-      .expect(200)
-      .then(response => {
-        expect(response.body.id).toBeDefined();
-        expect(response.body.id).not.toBeNull();
-        Document.findById(response.body.id).exec(function(error, document) {
-          expect(document).not.toBeNull();
-          expect(document.displayName).toBe('Critically Important File');
-          done();
-        });
-      });
-  });
+//   test('uploads a document', done => {
+//     let documentParams = buildDocumentParams();
+//     request(app).post('/api/public/document')
+//       .send(documentParams)
+//       .expect(200)
+//       .then(response => {
+//         expect(response.body.id).toBeDefined();
+//         expect(response.body.id).not.toBeNull();
+//         Document.findById(response.body.id).exec(function(error, document) {
+//           expect(document).not.toBeNull();
+//           expect(document.displayName).toBe('Critically Important File');
+//           done();
+//         });
+//       });
+//   });
 
-  test('sets the relationships to application, comment, and decision', done => {
-    let documentParams = buildDocumentParams();
-    request(app).post('/api/public/document')
-      .send(documentParams)
-      .expect(200)
-      .then(response => {
-        expect(response.body.id).not.toBeNull();
-        Document.findById(response.body.id).exec(function(error, document) {
-          expect(document).not.toBeNull();
-          expect(document._application.toString()).toBe(applicationId)
-          expect(document._comment.toString()).toBe(commentId)
-          expect(document._decision.toString()).toBe(decisionId)
-          done();
-        });
-      });
-  });
+//   test('sets the relationships to application, comment, and decision', done => {
+//     let documentParams = buildDocumentParams();
+//     request(app).post('/api/public/document')
+//       .send(documentParams)
+//       .expect(200)
+//       .then(response => {
+//         expect(response.body.id).not.toBeNull();
+//         Document.findById(response.body.id).exec(function(error, document) {
+//           expect(document).not.toBeNull();
+//           expect(document._application.toString()).toBe(applicationId)
+//           expect(document._comment.toString()).toBe(commentId)
+//           expect(document._decision.toString()).toBe(decisionId)
+//           done();
+//         });
+//       });
+//   });
 
-  test('sets the file metadata ', done => {
-    let documentParams = buildDocumentParams();
-    request(app).post('/api/public/document')
-      .send(documentParams)
-      .expect(200)
-      .then(response => {
-        expect(response.body.id).not.toBeNull();
-        Document.findById(response.body.id).exec(function(error, document) {
-          expect(document).not.toBeNull();
-          expect(document.internalMime).toBe('text/plain');
+//   test('sets the file metadata ', done => {
+//     let documentParams = buildDocumentParams();
+//     request(app).post('/api/public/document')
+//       .send(documentParams)
+//       .expect(200)
+//       .then(response => {
+//         expect(response.body.id).not.toBeNull();
+//         Document.findById(response.body.id).exec(function(error, document) {
+//           expect(document).not.toBeNull();
+//           expect(document.internalMime).toBe('text/plain');
 
-          // Test that intenalURL is a  numeric UUID with a .txt extension
-          expect(document.internalURL).toMatch(/.\/uploads\/([0-9\s:])+(.txt)$/);
+//           // Test that intenalURL is a  numeric UUID with a .txt extension
+//           expect(document.internalURL).toMatch(/.\/uploads\/([0-9\s:])+(.txt)$/);
           
-          expect(document.documentFileName).toBe('test_document.txt');
-          done();
-        });
-      });
-  });
+//           expect(document.documentFileName).toBe('test_document.txt');
+//           done();
+//         });
+//       });
+//   });
 
-  test.skip('Runs a virus scan', done => {
+//   test.skip('Runs a virus scan', done => {
 
-  });
-});
+//   });
+// });
 
-describe('GET /public/document/{:id}/download', () => {
-  test('allows downloading a document', done => {
-    documentFactory.create('document', {}, {public: true}).then(document => {
-      let uri = '/api/public/document/' + document.id + '/download';
-      request(app).get(uri)
-        .expect(200).then(response => {
-          expect(response.body).not.toBeNull();
-          done()
-        });
-    });
-  });
+// describe('GET /public/document/{:id}/download', () => {
+//   test('allows downloading a document', done => {
+//     documentFactory.create('document', {}, {public: true}).then(document => {
+//       let uri = '/api/public/document/' + document.id + '/download';
+//       request(app).get(uri)
+//         .expect(200).then(response => {
+//           expect(response.body).not.toBeNull();
+//           done()
+//         });
+//     });
+//   });
 
-  test('404s when trying to download a document which is not public', done => {
-    documentFactory.create('document', {}, {public: false}).then(document => {
-      let uri = '/api/public/document/' + document.id + '/download';
-      request(app).get(uri)
-        .expect(404).then(response => {
-          done()
-        });
-    });
-  });
+//   test('404s when trying to download a document which is not public', done => {
+//     documentFactory.create('document', {}, {public: false}).then(document => {
+//       let uri = '/api/public/document/' + document.id + '/download';
+//       request(app).get(uri)
+//         .expect(404).then(response => {
+//           done()
+//         });
+//     });
+//   });
 
-  test('404s when trying to download a document which does not exist', done => {
-    request(app).get('/api/public/document/5aa80486343ef100195e5451/download')
-      .expect(404)
-      .then(response => {
-        done()
-      });
-  });
+//   test('404s when trying to download a document which does not exist', done => {
+//     request(app).get('/api/public/document/5aa80486343ef100195e5451/download')
+//       .expect(404)
+//       .then(response => {
+//         done()
+//       });
+//   });
 
-  test('404s when trying to download without an id', done => {
-    request(app).get('/api/public/document//download')
-      .expect(404).then(response => {
-        done()
-      });
-  });
-});
+//   test('404s when trying to download without an id', done => {
+//     request(app).get('/api/public/document//download')
+//       .expect(404).then(response => {
+//         done()
+//       });
+//   });
+// });
 
-describe('PUT /document/:id/publish', () => {
-  test('publishes a document', done => {
-    let existingDocumentData = {
-      displayName: 'Existing Document',
-      tags: []
-    };
-    documentFactory.create('document', existingDocumentData)
-      .then(document => {
-        let uri = '/api/document/' + document._id + '/publish';
-        request(app).put(uri)
-          .expect(200)
-          .send({})
-          .then(response => {
-            Document.findOne({displayName: 'Existing Document'}).exec(function(error, updatedDocument) {
-              expect(updatedDocument).toBeDefined();
-              expect(updatedDocument.tags[0]).toEqual(expect.arrayContaining(['public']));
-              done();
-            });
-          });
-      })
+// describe('PUT /document/:id/publish', () => {
+//   test('publishes a document', done => {
+//     let existingDocumentData = {
+//       displayName: 'Existing Document',
+//       tags: []
+//     };
+//     documentFactory.create('document', existingDocumentData)
+//       .then(document => {
+//         let uri = '/api/document/' + document._id + '/publish';
+//         request(app).put(uri)
+//           .expect(200)
+//           .send({})
+//           .then(response => {
+//             Document.findOne({displayName: 'Existing Document'}).exec(function(error, updatedDocument) {
+//               expect(updatedDocument).toBeDefined();
+//               expect(updatedDocument.tags[0]).toEqual(expect.arrayContaining(['public']));
+//               done();
+//             });
+//           });
+//       })
 
-  });
+//   });
 
-  test('404s if the document does not exist', done => {
-    let uri = '/api/document/' + 'NON_EXISTENT_ID' + '/publish';
-    request(app).put(uri)
-      .send({})
-      .expect(404)
-      .then(response => {
-        done();
-      });
-  });
-});
+//   test('404s if the document does not exist', done => {
+//     let uri = '/api/document/' + 'NON_EXISTENT_ID' + '/publish';
+//     request(app).put(uri)
+//       .send({})
+//       .expect(404)
+//       .then(response => {
+//         done();
+//       });
+//   });
+// });
 
-describe('PUT /document/:id/unpublish', () => {
-  test('unpublishes a document', done => {
-    let existingDocumentData = {
-      displayName: 'Existing Document',
-      tags: [['public']]
-    };
-    documentFactory.create('document', existingDocumentData)
-      .then(document => {
-        let uri = '/api/document/' + document._id + '/unpublish';
-        request(app).put(uri)
-          .expect(200)
-          .send({})
-          .then(response => {
-            Document.findOne({displayName: 'Existing Document'}).exec(function(error, updatedDocument) {
-              expect(updatedDocument).toBeDefined();
-              expect(updatedDocument.tags[0]).toEqual(expect.arrayContaining([]));
-              done();
-            });
-          });
-      });
-  });
+// describe('PUT /document/:id/unpublish', () => {
+//   test('unpublishes a document', done => {
+//     let existingDocumentData = {
+//       displayName: 'Existing Document',
+//       tags: [['public']]
+//     };
+//     documentFactory.create('document', existingDocumentData)
+//       .then(document => {
+//         let uri = '/api/document/' + document._id + '/unpublish';
+//         request(app).put(uri)
+//           .expect(200)
+//           .send({})
+//           .then(response => {
+//             Document.findOne({displayName: 'Existing Document'}).exec(function(error, updatedDocument) {
+//               expect(updatedDocument).toBeDefined();
+//               expect(updatedDocument.tags[0]).toEqual(expect.arrayContaining([]));
+//               done();
+//             });
+//           });
+//       });
+//   });
 
-  test('404s if the decision does not exist', done => {
-    let uri = '/api/decision/' + 'NON_EXISTENT_ID' + '/unpublish';
-    request(app).put(uri)
-      .send({})
-      .expect(404)
-      .then(response => {
-        done();
-      });
-  });
-});
+//   test('404s if the decision does not exist', done => {
+//     let uri = '/api/decision/' + 'NON_EXISTENT_ID' + '/unpublish';
+//     request(app).put(uri)
+//       .send({})
+//       .expect(404)
+//       .then(response => {
+//         done();
+//       });
+//   });
+// });
 
-describe('DELETE /document/:id', () => {
-  test('It soft deletes a document', done => {
-    setupDocuments(documentsData).then((documents) => {
-      Document.findOne({displayName: 'Vanilla Ice Cream'}).exec(function(error, document) {
-        let vanillaDocumentId = document._id.toString();
-        let uri = '/api/document/' + vanillaDocumentId;
-        request(app)
-          .delete(uri)
-          .expect(200)
-          .then(response => {
-            Document.findOne({displayName: 'Vanilla Ice Cream'}).exec(function(error, updatedDocument) {
-              expect(updatedDocument.isDeleted).toBe(true);
-              done();
-            });
-          });
-      });
-    });
-  });
+// describe('DELETE /document/:id', () => {
+//   test('It soft deletes a document', done => {
+//     setupDocuments(documentsData).then((documents) => {
+//       Document.findOne({displayName: 'Vanilla Ice Cream'}).exec(function(error, document) {
+//         let vanillaDocumentId = document._id.toString();
+//         let uri = '/api/document/' + vanillaDocumentId;
+//         request(app)
+//           .delete(uri)
+//           .expect(200)
+//           .then(response => {
+//             Document.findOne({displayName: 'Vanilla Ice Cream'}).exec(function(error, updatedDocument) {
+//               expect(updatedDocument.isDeleted).toBe(true);
+//               done();
+//             });
+//           });
+//       });
+//     });
+//   });
 
-  test('404s if the document does not exist', done => {
-    let uri = '/api/document/' + 'NON_EXISTENT_ID';
-    request(app)
-      .delete(uri)
-      .expect(404)
-      .then(response => {
-        done();
-      });
-  });
-});
+//   test('404s if the document does not exist', done => {
+//     let uri = '/api/document/' + 'NON_EXISTENT_ID';
+//     request(app)
+//       .delete(uri)
+//       .expect(404)
+//       .then(response => {
+//         done();
+//       });
+//   });
+// });
