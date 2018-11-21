@@ -6,10 +6,13 @@ const mongoose = require('mongoose');
 const mongooseOpts = require('../../config/mongoose_options').mongooseOptions;
 const mongoDbMemoryServer = require('mongodb-memory-server');
 const _ = require('lodash');
+
 const app = express();
 let mongoServer;
 mongoose.Promise = global.Promise;
 setupAppServer();
+
+jest.setTimeout(10000);
 
 beforeAll(async () => {
   mongoServer = new mongoDbMemoryServer.default({
