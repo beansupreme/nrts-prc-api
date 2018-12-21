@@ -1,22 +1,20 @@
 const test_helper = require('./test_helper');
-const userFactory = require('./factories/user_factory').factory;
 const applicationFactory = require('./factories/application_factory').factory;
 const app = test_helper.app;
 const mongoose = require('mongoose');
 const request = require('supertest');
 const nock = require('nock');
 const tantalisResponse = require('./fixtures/tantalis_response.json');
-const fieldNames = [];
+const fieldNames = ['description', 'tantalisID'];
 const _ = require('lodash');
 
 
 const applicationController = require('../controllers/application.js');
 require('../helpers/models/application');
-require('../helpers/models/user');
 require('../helpers/models/feature');
-var Application = mongoose.model('Application');
-var User = mongoose.model('User');
-var Feature = mongoose.model('Feature');
+const Application = mongoose.model('Application');
+const Feature = mongoose.model('Feature');
+const idirUsername = 'idir/i_am_a_bot';
 
 function paramsWithAppId(req) {
   let params = test_helper.buildParams({'appId': req.params.id});
@@ -48,7 +46,7 @@ app.get('/api/public/application/:id', function(req, res) {
 
 app.post('/api/application/', function(req, res) {
   let extraFields = test_helper.buildParams({'app': req.body});
-  let params = test_helper.createSwaggerParams(fieldNames, extraFields, userID);
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields, idirUsername);
   return applicationController.protectedPost(params, res);
 });
 
@@ -71,10 +69,10 @@ app.put('/api/application/:id/unpublish', function(req, res) {
 });
 
 const applicationsData = [
-  {code: 'SPECIAL', name: 'Special Application', tags: [['public'], ['sysadmin']], isDeleted: false},
-  {code: 'VANILLA', name: 'Vanilla Ice Cream', tags: [['public']], isDeleted: false},
-  {code: 'TOP_SECRET', name: 'Confidential Application', tags: [['sysadmin']], isDeleted: false},
-  {code: 'DELETED', name: 'Deleted Application', tags: [['public'], ['sysadmin']], isDeleted: true},
+  {description: 'SPECIAL', name: 'Special Application', tags: [['public'], ['sysadmin']], isDeleted: false},
+  {description: 'VANILLA', name: 'Vanilla Ice Cream', tags: [['public']], isDeleted: false},
+  {description: 'TOP_SECRET', name: 'Confidential Application', tags: [['sysadmin']], isDeleted: false},
+  {description: 'DELETED', name: 'Deleted Application', tags: [['public'], ['sysadmin']], isDeleted: true},
 ];
 
 
@@ -88,24 +86,6 @@ function setupApplications(applicationsData) {
   });
 };
 
-var authUser;
-
-function setupUser() {
-  return new Promise(function(resolve, reject) {
-    if (_.isUndefined(authUser)) {
-      userFactory.create('user').then(user => {
-        authUser = user;
-        userID = user._id;
-        resolve();
-      }).catch(error => {
-        reject(error);
-      });
-    } else {
-      resolve();
-    }
-  });
-}
-
 describe('GET /application', () => {
   test('returns a list of non-deleted, public and sysadmin Applications', done => {
     setupApplications(applicationsData).then((documents) => {
@@ -113,16 +93,16 @@ describe('GET /application', () => {
         .expect(200)
         .then(response => {
           expect(response.body.length).toEqual(3);
-
-          let firstApplication = _.find(response.body, {code: 'SPECIAL'});
+          
+          let firstApplication = _.find(response.body, {description: 'SPECIAL'});
           expect(firstApplication).toHaveProperty('_id');
           expect(firstApplication['tags']).toEqual(expect.arrayContaining([["public"], ["sysadmin"]]));
 
-          let secondApplication = _.find(response.body, {code: 'VANILLA'});
+          let secondApplication = _.find(response.body, {description: 'VANILLA'});
           expect(secondApplication).toHaveProperty('_id');
           expect(secondApplication['tags']).toEqual(expect.arrayContaining([["public"]]));
 
-          let secretApplication = _.find(response.body, {code: 'TOP_SECRET'});
+          let secretApplication = _.find(response.body, {description: 'TOP_SECRET'});
           expect(secretApplication).toHaveProperty('_id');
           expect(secretApplication['tags']).toEqual(expect.arrayContaining([["sysadmin"]]));
           done()
@@ -149,7 +129,7 @@ describe('GET /application', () => {
 describe('GET /application/{id}', () => {
   test('returns a single Application ', done => {
     setupApplications(applicationsData).then((documents) => {
-      Application.findOne({code: 'SPECIAL'}).exec(function(error, application) {
+      Application.findOne({description: 'SPECIAL'}).exec(function(error, application) {
         let specialAppId = application._id.toString();
         let uri = '/api/application/' + specialAppId;
 
@@ -162,7 +142,7 @@ describe('GET /application/{id}', () => {
             expect(responseObject).toMatchObject({
               '_id': specialAppId,
               'tags': expect.arrayContaining([['public'], ['sysadmin']]),
-              code: 'SPECIAL'
+              description: 'SPECIAL'
             });
             done();
           });
@@ -179,13 +159,13 @@ describe('GET /public/application', () => {
         .then(response => {
           expect(response.body.length).toEqual(2);
 
-          let firstApplication = _.find(response.body, {code: 'SPECIAL'});
+          let firstApplication = _.find(response.body, {description: 'SPECIAL'});
           expect(firstApplication).toHaveProperty('_id');
           expect(firstApplication['tags']).toEqual(expect.arrayContaining([["public"], ["sysadmin"]]));
 
-          let secondApplication = _.find(response.body, {code: 'VANILLA'});
+          let secondApplication = _.find(response.body, {description: 'VANILLA'});
           expect(secondApplication).toHaveProperty('_id');
-          expect(secondApplication.code).toBe('VANILLA');
+          expect(secondApplication.description).toBe('VANILLA');
           expect(secondApplication['tags']).toEqual(expect.arrayContaining([["public"]]));
           done()
         });
@@ -206,7 +186,7 @@ describe('GET /public/application', () => {
 describe('GET /public/application/{id}', () => {
   test('returns a single public application ', done => {
     setupApplications(applicationsData).then((documents) => {
-      Application.findOne({code: 'SPECIAL'}).exec(function(error, application) {
+      Application.findOne({description: 'SPECIAL'}).exec(function(error, application) {
         let specialAppId = application._id.toString();
         let uri = '/api/public/application/' + specialAppId;
 
@@ -219,7 +199,7 @@ describe('GET /public/application/{id}', () => {
             expect(responseObj).toMatchObject({
               '_id': specialAppId,
               'tags': expect.arrayContaining([['public'], ['sysadmin']]),
-              code: 'SPECIAL'
+              description: 'SPECIAL'
             });
             done();
           });
@@ -231,14 +211,14 @@ describe('GET /public/application/{id}', () => {
 describe('DELETE /application/id', () => {
   test('It soft deletes an application', done => {
     setupApplications(applicationsData).then((documents) => {
-      Application.findOne({code: 'VANILLA'}).exec(function(error, application) {
+      Application.findOne({description: 'VANILLA'}).exec(function(error, application) {
         let vanillaAppId = application._id.toString();
         let uri = '/api/application/' + vanillaAppId;
         request(app)
           .delete(uri)
           .expect(200)
           .then(response => {
-            Application.findOne({code: 'VANILLA'}).exec(function(error, application) {
+            Application.findOne({description: 'VANILLA'}).exec(function(error, application) {
               expect(application.isDeleted).toBe(true);
               done();
             });
@@ -258,18 +238,16 @@ describe('DELETE /application/id', () => {
   });
 });
 
-describe('POST /application', () => {
-  beforeEach(done => {
-    setupUser().then(done);
-  });
+describe.skip('POST /application', () => {
+
   const bcgwDomain = 'https://openmaps.gov.bc.ca';
   const searchPath = '/geo/pub/WHSE_TANTALIS.TA_CROWN_TENURES_SVW/ows?service=wfs&version=2.0.0&request=getfeature&typename=PUB:WHSE_TANTALIS.TA_CROWN_TENURES_SVW&outputFormat=json&srsName=EPSG:4326&CQL_FILTER=DISPOSITION_TRANSACTION_SID=';
   let applicationObj = {
     name: 'Victoria',
-    code: 'victoria',
+    description: 'victoria',
     tantalisID: 999999
   };
-  var bcgw = nock(bcgwDomain);
+  const bcgw = nock(bcgwDomain);
   let urlEncodedTantalisId = `%27${applicationObj.tantalisID}%27`;
 
   describe('when bcgw finds a matching object', () => {
@@ -283,7 +261,7 @@ describe('POST /application', () => {
         .send(applicationObj)
         .expect(200).then(response => {
           expect(response.body).toHaveProperty('_id');
-          Application.findOne({code: 'victoria'}).exec(function(error, application) {
+          Application.findOne({description: 'victoria'}).exec(function(error, application) {
             expect(application).toBeDefined();
             expect(application.name).toBe('Victoria');
             done();
@@ -313,7 +291,7 @@ describe('POST /application', () => {
         .send(applicationObj)
         .expect(200).then(response => {
           expect(response.body).toHaveProperty('_id');
-          Application.findOne({code: 'victoria'}).exec(function(error, application) {
+          Application.findOne({description: 'victoria'}).exec(function(error, application) {
             expect(application).not.toBeNull();
             expect(application._addedBy).not.toBeNull();
             expect(application._addedBy).toEqual(userID);
@@ -333,8 +311,6 @@ describe('POST /application', () => {
             expect(application.tags.length).toEqual(1)
             expect(application.tags[0]).toEqual(expect.arrayContaining(['sysadmin']));
 
-            expect(application.internal.tags.length).toEqual(1)
-            expect(application.internal.tags[0]).toEqual(expect.arrayContaining(['sysadmin']));
             done();
           });
         });
@@ -379,7 +355,7 @@ describe('POST /application', () => {
 describe('PUT /application/:id', () => {
   test('updates an application', done => {
     let existingApplication = new Application({
-      code: 'SOME_APP',
+      description: 'SOME_APP',
       name: 'Boring Application'
     });
     let updateData = {
@@ -411,26 +387,19 @@ describe('PUT /application/:id', () => {
 
   test('does not allow updating tags', done => {
     let existingApplication = new Application({
-      code: 'EXISTING',
-      tags: [['public']],
-      internal: {
-        tags: [['public']]
-      }
+      description: 'EXISTING',
+      tags: [['public']]
     });
     let updateData = {
-      tags: [['public'], ['sysadmin']],
-      internal: {
-        tags: [['sysadmin']]
-      }
+      tags: [['public'], ['sysadmin']]
     };
     existingApplication.save().then(application => {
       let uri = '/api/application/' + application._id;
       request(app).put(uri)
         .send(updateData)
         .then(response => {
-          Application.findById(existingApplication._id).exec(function(error, application) {
-            expect(application.tags.length).toEqual(1)
-            expect(application.internal.tags.length).toEqual(1);
+          Application.findById(existingApplication._id).exec(function(error, updatedApplication) {
+            expect(updatedApplication.tags.length).toEqual(1)
             done();
           });
         });
@@ -442,7 +411,7 @@ describe('PUT /application/:id/publish', () => {
   let existingApplication;
   beforeEach(() => {
     existingApplication = new Application({
-      code: 'Existing',
+      description: 'Existing',
       name: 'Boring application',
     });
     return existingApplication.save();
@@ -498,7 +467,7 @@ describe('PUT /application/:id/unpublish', () => {
   let existingApplication;
   beforeEach(() => {
     existingApplication = new Application({
-      code: 'Existing',
+      description: 'Existing',
       name: 'Boring application',
       tags: [['public']]
     });

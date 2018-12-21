@@ -11,7 +11,7 @@ const _ = require('lodash');
 
 const commentController = require('../controllers/comment.js');
 require('../helpers/models/comment');
-var Comment = mongoose.model('Comment');
+const Comment = mongoose.model('Comment');
 
 function paramsWithCommentId(req) {
   let params = test_helper.buildParams({'CommentId': req.params.id});
@@ -63,10 +63,10 @@ app.put('/api/comment/:id/unpublish', function(req, res) {
 
 
 const commentsData = [
-  {code: 'SPECIAL', name: 'Special Comment', comment: 'This Comment is so special', tags: [['public'], ['sysadmin']], isDeleted: false},
-  {code: 'VANILLA', name: 'Vanilla Ice Cream', comment: 'I like Ice Cream', tags: [['public']], isDeleted: false},
-  {code: 'TOP_SECRET', name: 'Confidential Comment', comment: 'This is a secret govt project', tags: [['sysadmin']], isDeleted: false},
-  {code: 'DELETED', name: 'Deleted Comment', comment: 'Trolling for suckers', tags: [['public'], ['sysadmin']], isDeleted: true},
+  { name: 'Special Comment', comment: 'This Comment is so special', tags: [['public'], ['sysadmin']], isDeleted: false},
+  { name: 'Vanilla Ice Cream', comment: 'I like Ice Cream', tags: [['public']], isDeleted: false},
+  { name: 'Confidential Comment', comment: 'This is a secret govt project', tags: [['sysadmin']], isDeleted: false},
+  { name: 'Deleted Comment', comment: 'Trolling for suckers', tags: [['public'], ['sysadmin']], isDeleted: true},
 ];
 
 function setupComments(commentsData) {
@@ -144,7 +144,7 @@ describe('GET /Comment', () => {
 describe('GET /comment/{id}', () => {
   test('returns a single Comment ', done => {
     setupComments(commentsData).then((documents) => {
-      Comment.findOne({code: 'SPECIAL'}).exec(function(error, comment) {
+      Comment.findOne({name: 'Special Comment'}).exec(function(error, comment) {
         let specialCommentId = comment._id.toString();
         let uri = '/api/comment/' + specialCommentId;
 
@@ -202,7 +202,7 @@ describe('GET /public/comment', () => {
 describe('GET /public/comment/{id}', () => {
   test('returns a single public comment ', done => {
     setupComments(commentsData).then((documents) => {
-      Comment.findOne({code: 'SPECIAL'}).exec(function(error, comment) {
+      Comment.findOne({name: 'Special Comment'}).exec(function(error, comment) {
         if (error) {
           console.log(error);
           throw error
@@ -341,7 +341,7 @@ describe('PUT /comment/:id', () => {
   let existingComment;
   beforeEach(() => {
     existingComment = new Comment({
-      code: 'SOME_APP',
+      name: 'SOME_APP',
       comment: 'I like developmment.'
     });
     return existingComment.save();
@@ -510,7 +510,7 @@ describe('PUT /comment/:id', () => {
 
   test('does not allow updating tags', done => {
     let existingComment = new Comment({
-      code: 'EXISTING',
+      name: 'EXISTING',
       tags: [['public']]
     });
     let updateData = {
@@ -533,7 +533,7 @@ describe('PUT /comment/:id', () => {
 describe('PUT /comment/:id/publish', () => {
   test('publishes an comment', done => {
     let existingComment = new Comment({
-      code: 'EXISTING',
+      name: 'EXISTING',
       comment: 'I love this project',
       tags: []
     });
@@ -543,7 +543,7 @@ describe('PUT /comment/:id/publish', () => {
         .expect(200)
         .send({})
         .then(response => {
-          Comment.findOne({code: 'EXISTING'}).exec(function(error, comment) {
+          Comment.findOne({name: 'EXISTING'}).exec(function(error, comment) {
             expect(comment).toBeDefined();
             expect(comment.tags[0]).toEqual(expect.arrayContaining(['public']));
             done();
@@ -567,7 +567,7 @@ describe('PUT /comment/:id/publish', () => {
 describe('PUT /comment/:id/unpublish', () => {
   test('unpublishes a comment', done => {
     let existingComment = new Comment({
-      code: 'EXISTING',
+      name: 'EXISTING',
       comment: 'I love this project',
       tags: [['public']]
     });
@@ -577,7 +577,7 @@ describe('PUT /comment/:id/unpublish', () => {
         .expect(200)
         .send({})
         .then(response => {
-          Comment.findOne({code: 'EXISTING'}).exec(function(error, updatedComment) {
+          Comment.findOne({name: 'EXISTING'}).exec(function(error, updatedComment) {
             expect(updatedComment).toBeDefined();
             expect(updatedComment.tags[0]).toEqual(expect.arrayContaining([]));
             done();

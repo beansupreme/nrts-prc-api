@@ -1,5 +1,4 @@
 const test_helper = require('./test_helper');
-const userFactory = require('./factories/user_factory').factory;
 const app = test_helper.app;
 const mongoose = require('mongoose');
 const request = require('supertest');
@@ -8,11 +7,9 @@ const organizationController = require('../controllers/organization.js');
 
 const _ = require('lodash');
 require('../helpers/models/organization');
-require('../helpers/models/user');
-var Organization = mongoose.model('Organization');
-var User = mongoose.model('User');
-var authUser;
+const Organization = mongoose.model('Organization');
 const fieldNames = [];
+const idirUsername = 'idir/i_am_a_bot';
 
 function paramsWithOrgId(req) {
   let params = test_helper.buildParams({'orgId': req.params.id});
@@ -30,7 +27,7 @@ app.get('/api/organization/:id', function(req, res) {
 
 app.post('/api/organization', function(req, res) {
   let extraFields = test_helper.buildParams({'org': req.body});
-  let params = test_helper.createSwaggerParams(fieldNames, extraFields, userID);
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields, idirUsername);
   return organizationController.protectedPost(params, res);
 });
 
@@ -48,21 +45,6 @@ app.put('/api/organization/:id/unpublish', function(req, res) {
   return organizationController.protectedUnPublish(paramsWithOrgId(req), res);
 });
 
-function setupUser() {
-  return new Promise(function(resolve, reject) {
-    if (_.isUndefined(authUser)) {
-      userFactory.create('user').then(user => {
-        authUser = user;
-        userID = user._id;
-        resolve();
-      }).catch(error => {
-        reject(error);
-      });
-    } else {
-      resolve();
-    }
-  });
-}
 
 function setupOrganizations(organizations) {
   return new Promise(function(resolve, reject) {
@@ -87,15 +69,13 @@ describe('GET /Organization', () => {
       request(app).get('/api/organization').expect(200).then(response => {
         expect(response.body.length).toEqual(2);
 
-        let firstOrg = _.find(response.body, {code: 'SPECIAL'});
+        let firstOrg = _.find(response.body, {name: 'Special Organization'});
         expect(firstOrg).toHaveProperty('_id');
-        expect(firstOrg.name).toBe('Special Organization')
-        // expect(firstOrg['tags']).toEqual(expect.arrayContaining(["public"], ["sysadmin"]));
+        expect(firstOrg['tags']).toEqual(expect.arrayContaining([["public"], ["sysadmin"]]));
 
-        let secondOrg = _.find(response.body, {code: 'VANILLA'});
+        let secondOrg = _.find(response.body, {name: 'Vanilla Ice Cream'});
         expect(secondOrg).toHaveProperty('_id');
-        expect(secondOrg.name).toBe('Vanilla Ice Cream')
-        // expect(secondOrg['tags']).toEqual(expect.arrayContaining(["public"]));
+        expect(secondOrg['tags']).toEqual(expect.arrayContaining([["public"]]));
         done()
       });
     });
@@ -124,8 +104,7 @@ describe('GET /organization/{id}', () => {
           expect(specialOrgData).toMatchObject({
             '_id': specialOrgId,
             'tags': expect.arrayContaining([['public'], ['sysadmin']]),
-            name: 'Special Organization',
-            code: 'SPECIAL'
+            name: 'Special Organization'
           });
           done();
         });
@@ -135,22 +114,16 @@ describe('GET /organization/{id}', () => {
 });
 
 describe('POST /organization', () => {
-  beforeEach(done => {
-    setupUser().then(done);
-  });
-
   test('creates a new organization', done => {
     let orgObject = {
-      name: 'Victoria',
-      code: 'victoria'
+      name: 'Victoria'
     };
     request(app).post('/api/organization')
       .send(orgObject)
       .expect(200).then(response => {
         expect(response.body).toHaveProperty('_id');
-        Organization.findOne({code: 'victoria'}).exec(function(error, organization) {
-          expect(organization).toBeDefined();
-          expect(organization.name).toBe('Victoria');
+        Organization.findOne({name: 'Victoria'}).exec(function(error, organization) {
+          expect(organization).not.toBeNull();
           done();
         });
       });
@@ -158,15 +131,15 @@ describe('POST /organization', () => {
 
   test('it sets the _addedBy to the person modifying the org', done => {
     let orgObject = {
-      name: 'Victoria',
-      code: 'victoria'
+      name: 'Victoria'
     };
     request(app).post('/api/organization')
       .send(orgObject)
       .expect(200).then(response => {
         expect(response.body).toHaveProperty('_id');
-        Organization.findOne({code: 'victoria'}).exec(function(error, organization) {
-          expect(organization._addedBy).toEqual(userID);
+        Organization.findOne({name: 'Victoria'}).exec(function(error, organization) {
+          expect(organization).not.toBeNull();
+          expect(organization._addedBy).toEqual(idirUsername);
           done();
         });
       });
@@ -211,7 +184,6 @@ describe('PUT /organization/:id', () => {
 describe('PUT /organization/:id/publish', () => {
   test('publishes an organization', done => {
     let existingOrg = new Organization({
-      code: 'EXISTING',
       name: 'Boring Org',
       tags: []
     });
@@ -221,7 +193,7 @@ describe('PUT /organization/:id/publish', () => {
         .expect(200)
         .send({})
         .then(response => {
-          Organization.findOne({code: 'EXISTING'}).exec(function(error, org) {
+          Organization.findOne({name: 'Boring Org'}).exec(function(error, org) {
             expect(org).toBeDefined();
             expect(org.tags[0]).toEqual(expect.arrayContaining(['public']));
             done();
@@ -245,7 +217,6 @@ describe('PUT /organization/:id/publish', () => {
 describe('PUT /organization/:id/unpublish', () => {
   test('unpublishes an organization', done => {
     let existingOrg = new Organization({
-      code: 'EXISTING',
       name: 'Boring Org',
       tags: [['public']]
     });
@@ -255,7 +226,7 @@ describe('PUT /organization/:id/unpublish', () => {
         .expect(200)
         .send({})
         .then(response => {
-          Organization.findOne({code: 'EXISTING'}).exec(function(error, org) {
+          Organization.findOne({name: 'Boring Org'}).exec(function(error, org) {
             expect(org).toBeDefined();
             expect(org.tags[0]).toEqual(expect.arrayContaining([]));
             done();

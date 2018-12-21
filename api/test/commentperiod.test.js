@@ -1,18 +1,19 @@
 const test_helper = require('./test_helper');
-const userFactory = require('./factories/user_factory').factory;
 const app = test_helper.app;
 const mongoose = require('mongoose');
 const commentPeriodFactory = require('./factories/comment_period_factory').factory;
 const applicationFactory = require('./factories/application_factory').factory;
 const request = require('supertest');
-const fieldNames = ['name', 'description'];
+const fieldNames = ['name', '_application'];
 const _ = require('lodash');
 
 const commentPeriodController = require('../controllers/commentperiod.js');
 require('../helpers/models/commentperiod');
-require('../helpers/models/user');
-var User = mongoose.model('User');
-var CommentPeriod = mongoose.model('CommentPeriod');
+require('../helpers/models/application');
+const Application = mongoose.model('Application');
+const CommentPeriod = mongoose.model('CommentPeriod');
+
+const idirUsername = 'idir/i_am_a_bot';
 
 function paramsWithCommentPerId(req) {
   let params = test_helper.buildParams({'CommentPeriodId': req.params.id});
@@ -44,13 +45,13 @@ app.get('/api/public/commentperiod/:id', function(req, res) {
 
 app.post('/api/commentperiod/', function(req, res) {
   let extraFields = test_helper.buildParams({'_commentPeriod': req.body});
-  let params = test_helper.createSwaggerParams(fieldNames, extraFields, userID);
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields, idirUsername);
   return commentPeriodController.protectedPost(params, res);
 });
 
 app.put('/api/commentperiod/:id', function(req, res) {
   let extraFields = test_helper.buildParams({'CommentPeriodId': req.params.id, 'cp': req.body});
-  let params = test_helper.createSwaggerParams(fieldNames, extraFields, userID);
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields, idirUsername);
   return commentPeriodController.protectedPut(params, res);
 });
 
@@ -65,12 +66,16 @@ app.put('/api/commentperiod/:id/unpublish', function(req, res) {
 app.delete('/api/commentperiod/:id', function(req, res) {
   return commentPeriodController.protectedDelete(paramsWithCommentPerId(req), res);
 });
+const specialApplication = new Application();
+const vanillaApplication = new Application();
+const confidentialApplication = new Application();
+const deletedApplication = new Application();
 
 const commentPeriodsData = [
-  {code: 'SPECIAL', name: 'Special Comment', description: 'This Comment is so special', tags: [['public'], ['sysadmin']], isDeleted: false},
-  {code: 'VANILLA', name: 'Vanilla Ice Cream', description: 'I like Ice Cream', tags: [['public']], isDeleted: false},
-  {code: 'TOP_SECRET', name: 'Confidential Comment', description: 'This is a secret govt project', tags: [['sysadmin']], isDeleted: false},
-  {code: 'DELETED', name: 'Deleted Comment', description: 'Trolling for suckers', tags: [['public'], ['sysadmin']], isDeleted: true},
+  { name: 'Special Comment', _application: specialApplication.id, tags: [['public'], ['sysadmin']], isDeleted: false},
+  { name: 'Vanilla Ice Cream', _application: vanillaApplication.id, tags: [['public']], isDeleted: false},
+  { name: 'Confidential Comment', _application: confidentialApplication.id, tags: [['sysadmin']], isDeleted: false},
+  { name: 'Deleted Comment', _application: deletedApplication.id, tags: [['public'], ['sysadmin']], isDeleted: true},
 ];
 
 function setupCommentPeriods(commentPeriodsData) {
@@ -83,17 +88,6 @@ function setupCommentPeriods(commentPeriodsData) {
   });
 };
 
-function setupUser() {
-  return new Promise(function(resolve, reject) {
-    userFactory.build('user').then(user => {
-      userID = user._id;
-      resolve();
-    }).catch(error => {
-      reject(error);
-    });
-  });
-}
-
 describe('GET /commentperiod', () => {
   test('returns a list of non-deleted, public and sysadmin comment periods', done => {
     setupCommentPeriods(commentPeriodsData).then((documents) => {
@@ -101,20 +95,20 @@ describe('GET /commentperiod', () => {
         .expect(200)
         .then(response => {
           expect(response.body.length).toEqual(3);
-
+          
           let firstCommentPeriod = _.find(response.body, {name: 'Special Comment'});
           expect(firstCommentPeriod).toHaveProperty('_id');
-          expect(firstCommentPeriod.description).toBe('This Comment is so special');
+          expect(firstCommentPeriod._application).toBe(specialApplication.id);
           expect(firstCommentPeriod['tags']).toEqual(expect.arrayContaining([["public"], ["sysadmin"]]));
 
           let secondCommentPeriod = _.find(response.body, {name: 'Vanilla Ice Cream'});
           expect(secondCommentPeriod).toHaveProperty('_id');
-          expect(secondCommentPeriod.description).toBe('I like Ice Cream');
+          expect(secondCommentPeriod._application).toBe(vanillaApplication.id);
           expect(secondCommentPeriod['tags']).toEqual(expect.arrayContaining([["public"]]));
 
           let secretCommentPeriod = _.find(response.body, {name: 'Confidential Comment'});
           expect(secretCommentPeriod).toHaveProperty('_id');
-          expect(secretCommentPeriod.description).toBe('This is a secret govt project');
+          expect(secretCommentPeriod._application).toBe(confidentialApplication.id);
           expect(secretCommentPeriod['tags']).toEqual(expect.arrayContaining([["sysadmin"]]));
           done()
         });
@@ -161,7 +155,7 @@ describe('GET /commentperiod', () => {
 describe('GET /commentperiod/{id}', () => {
   test('returns a single CommentPeriod ', done => {
     setupCommentPeriods(commentPeriodsData).then((documents) => {
-      CommentPeriod.findOne({code: 'SPECIAL'}).exec(function(error, commentPeriod) {
+      CommentPeriod.findOne({name: 'Special Comment'}).exec(function(error, commentPeriod) {
         let specialCommentId = commentPeriod._id.toString();
         let uri = '/api/commentperiod/' + specialCommentId;
 
@@ -174,7 +168,7 @@ describe('GET /commentperiod/{id}', () => {
             expect(responseObject).toMatchObject({
               '_id': specialCommentId,
               'tags': expect.arrayContaining([['public'], ['sysadmin']]),
-              'code': 'SPECIAL'
+              'name': 'Special Comment'
             });
             done();
           });
@@ -193,12 +187,12 @@ describe('GET /public/commentperiod', () => {
 
           let firstCommentPeriod = _.find(response.body, {name: 'Special Comment'});
           expect(firstCommentPeriod).toHaveProperty('_id');
-          expect(firstCommentPeriod.description).toBe('This Comment is so special');
+          expect(firstCommentPeriod._application).toBe(specialApplication.id);
           expect(firstCommentPeriod['tags']).toEqual(expect.arrayContaining([["public"], ["sysadmin"]]));
 
           let secondCommentPeriod = _.find(response.body, {name: 'Vanilla Ice Cream'});
           expect(secondCommentPeriod).toHaveProperty('_id');
-          expect(secondCommentPeriod.description).toBe('I like Ice Cream');
+          expect(secondCommentPeriod._application).toBe(vanillaApplication.id);
           expect(secondCommentPeriod['tags']).toEqual(expect.arrayContaining([["public"]]));
           done()
         });
@@ -219,7 +213,7 @@ describe('GET /public/commentperiod', () => {
 describe('GET /public/commentperiod/{id}', () => {
   test('returns a single public comment period ', done => {
     setupCommentPeriods(commentPeriodsData).then((documents) => {
-      CommentPeriod.findOne({code: 'SPECIAL'}).exec(function(error, commentPeriod) {
+      CommentPeriod.findOne({name: 'Special Comment'}).exec(function(error, commentPeriod) {
         if (error) {
           console.log(error);
           throw error
@@ -236,7 +230,7 @@ describe('GET /public/commentperiod/{id}', () => {
             expect(responseObj).toMatchObject({
               '_id': specialCommentPeriodId,
               'tags': expect.arrayContaining([['public'], ['sysadmin']]),
-              code: 'SPECIAL'
+              name: 'Special Comment'
             });
             done();
           });
@@ -272,14 +266,11 @@ describe('GET /public/commentperiod/{id}', () => {
 });
 
 describe('POST /commentperiod', () => {
-  beforeEach(done => {
-    setupUser().then(done);
-  });
-
   test('creates a new comment period', done => {
     let commentPeriodObj = {
       name: 'Victoria',
-      description: 'Victoria is a great place'
+      startDate: new Date(2018, 10, 1),
+      endDate: new Date(2018, 12, 14)
     };
 
     request(app).post('/api/commentperiod')
@@ -289,16 +280,16 @@ describe('POST /commentperiod', () => {
         CommentPeriod.findById(response.body['_id']).exec(function(error, commentPeriod) {
           expect(commentPeriod).not.toBeNull();
           expect(commentPeriod.name).toBe('Victoria');
-          expect(commentPeriod.description).toBe('Victoria is a great place');
+          expect(commentPeriod.startDate.getTime()).toEqual(new Date(2018, 10, 1).getTime());
+          expect(commentPeriod.endDate.getTime()).toEqual(new Date(2018, 12, 14).getTime());
           done();
         });
       });
   });
 
-  test('it sets the _addedBy to the person creating the comment period', done => {
+  test('it sets the _addedBy to the IDIR of the person creating the comment period', done => {
     let commentPeriodObj = {
-      name: 'Victoria',
-      description: 'Victoria is a great place'
+      name: 'Victoria'
     };
     request(app).post('/api/commentperiod')
       .send(commentPeriodObj)
@@ -306,8 +297,7 @@ describe('POST /commentperiod', () => {
         expect(response.body).toHaveProperty('_id');
         CommentPeriod.findById(response.body['_id']).exec(function(error, commentPeriod) {
           expect(commentPeriod).not.toBeNull();
-          expect(commentPeriod._addedBy).toEqual(userID);
-          // expect(commentPeriod.internal._addedBy).toEqual(userID);
+          expect(commentPeriod._addedBy).toEqual(idirUsername);
           done();
         });
       });
@@ -328,9 +318,6 @@ describe('POST /commentperiod', () => {
 
           expect(commentPeriod.tags.length).toEqual(1)
           expect(commentPeriod.tags[0]).toEqual(expect.arrayContaining(['sysadmin']));
-
-          expect(commentPeriod.internal.tags.length).toEqual(1)
-          expect(commentPeriod.internal.tags[0]).toEqual(expect.arrayContaining(['sysadmin']));
           done();
         });
       });
@@ -342,25 +329,20 @@ describe('PUT /commentperiod/:id', () => {
   let existingCommentPeriod;
   beforeEach(() => {
     existingCommentPeriod = new CommentPeriod({
-      code: 'SOME_APP',
-      description: 'I like developmment.',
-      internal: {
-        tags: []
-      }
+      name: 'SOME_APP'
     });
     return existingCommentPeriod.save();
   });
 
   test('updates a comment period', done => {
     let updateData = {
-      description: 'This application is amazing!',
-      internal: {tags: []}
+      name: 'Updated Application'
     };
     let uri = '/api/commentperiod/' + existingCommentPeriod._id;
     request(app).put(uri, updateData)
       .send(updateData)
       .then(response => {
-        CommentPeriod.findOne({description: 'This application is amazing!'}).exec(function(error, commentPeriod) {
+        CommentPeriod.findOne({name: 'Updated Application'}).exec(function(error, commentPeriod) {
           expect(commentPeriod).toBeDefined();
           expect(commentPeriod).not.toBeNull();
           done();
@@ -371,22 +353,22 @@ describe('PUT /commentperiod/:id', () => {
   test('404s if the comment does not exist', done => {
     let uri = '/api/commentperiod/' + 'NON_EXISTENT_ID';
     request(app).put(uri)
-      .send({description: 'hacker_man', internal: {tags: []}})
+      .send({description: 'hacker_man'})
       .expect(404)
       .then(response => {
         done();
       });
   });
 
-  test('does not allow updating tags, and sets internal tags to sysadmin', done => {
+  test('does not allow updating tags', done => {
     let existingCommentPeriod = new CommentPeriod({
-      code: 'EXISTING',
+      name: 'EXISTING',
       tags: [['sysadmin']]
     });
     let updateData = {
       tags: [['public'], ['sysadmin']],
-      internal: {tags: []}
     };
+
     existingCommentPeriod.save().then(commentPeriod => {
       let uri = '/api/commentperiod/' + commentPeriod._id;
       request(app).put(uri)
@@ -396,33 +378,50 @@ describe('PUT /commentperiod/:id', () => {
             expect(updatedCommentPeriod.tags.length).toEqual(1);
             expect(updatedCommentPeriod.tags[0]).toEqual(expect.arrayContaining(["sysadmin"]));
 
-            expect(updatedCommentPeriod.internal.tags.length).toEqual(1);
-            expect(updatedCommentPeriod.internal.tags[0]).toEqual(expect.arrayContaining(["sysadmin"]));
             done();
           });
         });
     });
   });
 
-  test.skip('does not set _addedBy', done => {
+  test('does not allow setting _addedBy', done => {
+    let existingCommentPeriod = new CommentPeriod({
+      name: 'EXISTING',
+      _addedBy: 'idir/someone_important'
+    });
+    let updateData = {
+      _addedBy: 'idir/i_am_a_hacker'
+    };
 
+    existingCommentPeriod.save().then(commentPeriod => {
+      let uri = '/api/commentperiod/' + commentPeriod._id;
+      request(app).put(uri)
+        .send(updateData)
+        .then(response => {
+          CommentPeriod.findById(commentPeriod._id).exec(function(error, updatedCommentPeriod) {
+            expect(updatedCommentPeriod._addedBy).toEqual('idir/someone_important');
+
+            done();
+          });
+        });
+    });
   });
 });
 
 describe('PUT /commentperiod/:id/publish', () => {
   test('publishes a comment period', done => {
     let existingCommentPeriod = new CommentPeriod({
-      code: 'EXISTING',
-      description: 'I love this project',
+      name: 'EXISTING',
       tags: []
     });
+
     existingCommentPeriod.save().then(commentPeriod => {
       let uri = '/api/commentperiod/' + commentPeriod._id + '/publish';
       request(app).put(uri)
         .expect(200)
         .send({})
         .then(response => {
-          CommentPeriod.findOne({code: 'EXISTING'}).exec(function(error, updatedCommentPeriod) {
+          CommentPeriod.findOne({name: 'EXISTING'}).exec(function(error, updatedCommentPeriod) {
             expect(updatedCommentPeriod).toBeDefined();
             expect(updatedCommentPeriod.tags[0]).toEqual(expect.arrayContaining(['public']));
             done();
@@ -446,8 +445,7 @@ describe('PUT /commentperiod/:id/publish', () => {
 describe('PUT /commentperiod/:id/unpublish', () => {
   test('unpublishes a commentperiod', done => {
     let existingCommentPeriod = new CommentPeriod({
-      code: 'EXISTING',
-      description: 'I love this project',
+      name: 'EXISTING',
       tags: [['public']]
     });
     existingCommentPeriod.save().then(commentPeriod => {
@@ -456,7 +454,7 @@ describe('PUT /commentperiod/:id/unpublish', () => {
         .expect(200)
         .send({})
         .then(response => {
-          CommentPeriod.findOne({code: 'EXISTING'}).exec(function(error, updatedCommentPeriod) {
+          CommentPeriod.findOne({name: 'EXISTING'}).exec(function(error, updatedCommentPeriod) {
             expect(updatedCommentPeriod).toBeDefined();
             expect(updatedCommentPeriod.tags[0]).toEqual(expect.arrayContaining([]));
             done();
@@ -479,14 +477,14 @@ describe('PUT /commentperiod/:id/unpublish', () => {
 describe('DELETE /commentperiod/:id', () => {
   test('It soft deletes a comment period', done => {
     setupCommentPeriods(commentPeriodsData).then((documents) => {
-      CommentPeriod.findOne({code: 'VANILLA'}).exec(function(error, commentPeriod) {
+      CommentPeriod.findOne({name: 'Vanilla Ice Cream'}).exec(function(error, commentPeriod) {
         let vanillaCommentPeriodId = commentPeriod._id.toString();
         let uri = '/api/commentperiod/' + vanillaCommentPeriodId;
         request(app)
           .delete(uri)
           .expect(200)
           .then(response => {
-            CommentPeriod.findOne({code: 'VANILLA'}).exec(function(error, commentPeriod) {
+            CommentPeriod.findOne({name: 'Vanilla Ice Cream'}).exec(function(error, commentPeriod) {
               expect(commentPeriod.isDeleted).toBe(true);
               done();
             });

@@ -9,7 +9,7 @@ const _ = require('lodash');
 const featureController = require('../controllers/feature.js');
 require('../helpers/models/feature');
 require('../helpers/models/application');
-var Feature = mongoose.model('Feature');
+const Feature = mongoose.model('Feature');
 
 const fieldNames = ['tags', 'properties', 'applicationID'];
 
@@ -88,13 +88,13 @@ app.put('/api/feature/:id/unpublish', function(req, res) {
 });
 
 const applicationsData = [
-  {code: 'SPECIAL', name: 'Special Application', tags: [['public'], ['sysadmin']], isDeleted: false},
-  {code: 'VANILLA', name: 'Vanilla Ice Cream', tags: [['public']], isDeleted: false},
-  {code: 'TOP_SECRET', name: 'Confidential Application', tags: [['sysadmin']], isDeleted: false},
-  {code: 'DELETED', name: 'Deleted Application', tags: [['public'], ['sysadmin']], isDeleted: true},
+  {name: 'Special Application', tags: [['public'], ['sysadmin']], isDeleted: false},
+  {name: 'Vanilla Ice Cream', tags: [['public']], isDeleted: false},
+  {name: 'Confidential Application', tags: [['sysadmin']], isDeleted: false},
+  {name: 'Deleted Application', tags: [['public'], ['sysadmin']], isDeleted: true},
 ];
 
-var specialApplicationId,
+let specialApplicationId,
   vanillaApplicationId,
   topSecretApplicationId,
   deletedApplicationId;

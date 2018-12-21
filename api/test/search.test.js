@@ -18,8 +18,8 @@ function publicParamsWithDtId(req) {
 const searchController = require('../controllers/search.js');
 require('../helpers/models/application');
 require('../helpers/models/feature');
-var Application = mongoose.model('Application');
-var Feature = mongoose.model('Feature');
+const Application = mongoose.model('Application');
+const Feature = mongoose.model('Feature');
 
 app.get('/api/public/search/bcgw/getClientsInfoByDispositionId/:id', function(req, res) {
   return searchController.publicGetClientsInfoByDispositionId(publicParamsWithDtId(req), res);
@@ -43,7 +43,7 @@ app.get('/api/public/search/bcgw/dispositionTransactionId/:id', function(req, re
 describe('GET /api/public/search/bcgw/getClientsInfoByDispositionId', () => {
   const arcGisDomain = 'http://maps.gov.bc.ca/';
   const searchPath = '/arcgis/rest/services/mpcm/bcgw/MapServer/dynamicLayer/query?layer=%7B%22id%22%3A1%2C%22source%22%3A%7B%22type%22%3A%22dataLayer%22%2C%22dataSource%22%3A%7B%22type%22%3A%22table%22%2C%22workspaceId%22%3A%22MPCM_ALL_PUB%22%2C%22dataSourceName%22%3A%22WHSE_TANTALIS.TA_INTEREST_HOLDER_VW%22%7D%7D%7D&text=&objectIds=&time=&geometry=&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=*&returnGeometry=true&maxAllowableOffset=&outSR=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&returnDistinctValues=false&f=json&where=DISPOSITION_TRANSACTION_SID=';
-  var argGis = nock(arcGisDomain);
+  const argGis = nock(arcGisDomain);
   let dispositionId = 666666;
   let urlEncodedDispositionId = `%27${dispositionId}%27`;
 
@@ -117,7 +117,7 @@ describe('GET /api/public/search/bcgw/getClientsInfoByDispositionId', () => {
 describe('GET /api/public/search/bcgw/crownLandsId/ ', () => {
   const bcgwDomain = 'https://openmaps.gov.bc.ca/';
   const searchPath = '/geo/pub/WHSE_TANTALIS.TA_CROWN_TENURES_SVW/ows?service=wfs&version=2.0.0&request=getfeature&typename=PUB:WHSE_TANTALIS.TA_CROWN_TENURES_SVW&outputFormat=json&srsName=EPSG:4326&CQL_FILTER=CROWN_LANDS_FILE=';
-  var bcgw = nock(bcgwDomain);
+  const bcgw = nock(bcgwDomain);
   let crownlandsId = 7777;
   // crownlands id with 7 digits
   let paddedCrownlandsId = `%27000${crownlandsId}%27`;
@@ -235,7 +235,7 @@ describe('GET /api/public/search/dispositionTransactionId', () => {
 describe('GET /api/public/search/bcgw/dispositionTransactionId', () => {
   const bcgwDomain = 'https://openmaps.gov.bc.ca';
   const searchPath = '/geo/pub/WHSE_TANTALIS.TA_CROWN_TENURES_SVW/ows?service=wfs&version=2.0.0&request=getfeature&typename=PUB:WHSE_TANTALIS.TA_CROWN_TENURES_SVW&outputFormat=json&srsName=EPSG:4326&CQL_FILTER=DISPOSITION_TRANSACTION_SID=';
-  var bcgw = nock(bcgwDomain);
+  const bcgw = nock(bcgwDomain);
   let dispositionId = 666666;
   let urlEncodedDispositionId = `%27${dispositionId}%27`;
 

@@ -7,7 +7,7 @@ const userController = require('../controllers/user.js');
 
 const _ = require('lodash');
 require('../helpers/models/user');
-var User = mongoose.model('User');
+const User = mongoose.model('User');
 const fieldNames = ['username'];
 
 function paramsWithUserId(req) {

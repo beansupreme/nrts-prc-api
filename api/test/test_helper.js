@@ -49,11 +49,14 @@ function setupAppServer() {
   app.use(bodyParser.json());
 }
 
-function createSwaggerParams(fieldNames, additionalValues = {}, userID = null) {
-  let defaultParams = defaultProtectedParams(fieldNames, userID);
+function createSwaggerParams(fieldNames, additionalValues = {}, username = null) {
+  let defaultParams = defaultProtectedParams(fieldNames, username);
   let swaggerObject = {
     swagger: {
-      params: _.merge(defaultParams, additionalValues)
+      params: _.merge(defaultParams, additionalValues),
+      operation:  {
+        'x-security-scopes': ['sysadmin', 'public']
+      }
     }
   }
   return swaggerObject;
@@ -69,11 +72,13 @@ function createPublicSwaggerParams(fieldNames, additionalValues = {}) {
   return swaggerObject;
 }
 
-function defaultProtectedParams(fieldNames, userID = null) {
+function defaultProtectedParams(fieldNames, username = null) {
   return {
     auth_payload: {
       scopes: ['sysadmin', 'public'],
-      userID: userID
+      // This value in the real world is pulled from the keycloak user. It will look something like
+      // idir/arwhilla
+      preferred_username: username
     },
     fields: {
       value: _.cloneDeep(fieldNames)

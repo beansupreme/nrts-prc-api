@@ -10,7 +10,7 @@ const _ = require('lodash');
 const decisionController = require('../controllers/decision.js');
 require('../helpers/models/decision');
 
-var Decision = mongoose.model('Decision');
+const Decision = mongoose.model('Decision');
 
 const fieldNames = ['name', 'description'];
 
@@ -61,10 +61,10 @@ app.delete('/api/decision/:id', function(req, res) {
 });
 
 const decisionsData = [
-  {code: 'SPECIAL', name: 'Special Decision', description: 'We have decided to save the environment', tags: [['public'], ['sysadmin']], isDeleted: false},
-  {code: 'VANILLA', name: 'Vanilla Ice Cream', description: 'Ice cream store will be built', tags: [['public']], isDeleted: false},
-  {code: 'TOP_SECRET', name: 'Confidential Decision', description: 'No comment', tags: [['sysadmin']], isDeleted: false},
-  {code: 'DELETED', name: 'Deleted Decision', description: 'Trolling for suckers', tags: [['public'], ['sysadmin']], isDeleted: true},
+  {name: 'Special Decision', description: 'We have decided to save the environment', tags: [['public'], ['sysadmin']], isDeleted: false},
+  {name: 'Vanilla Ice Cream', description: 'Ice cream store will be built', tags: [['public']], isDeleted: false},
+  {name: 'Confidential Decision', description: 'No comment', tags: [['sysadmin']], isDeleted: false},
+  {name: 'Deleted Decision', description: 'Trolling for suckers', tags: [['public'], ['sysadmin']], isDeleted: true},
 ];
 
 function setupDecisions(decisionsData) {
@@ -85,17 +85,17 @@ describe('GET /decision', () => {
         .then(response => {
           expect(response.body.length).toEqual(3);
 
-          let firstDecision = _.find(response.body, {code: 'SPECIAL'});
+          let firstDecision = _.find(response.body, {name: 'Special Decision'});
           expect(firstDecision).toHaveProperty('_id');
           expect(firstDecision.description).toBe('We have decided to save the environment');
           expect(firstDecision['tags']).toEqual(expect.arrayContaining([["public"], ["sysadmin"]]));
 
-          let secondDecision = _.find(response.body, {code: 'VANILLA'});
+          let secondDecision = _.find(response.body, {name: 'Vanilla Ice Cream'});
           expect(secondDecision).toHaveProperty('_id');
           expect(secondDecision.description).toBe('Ice cream store will be built');
           expect(secondDecision['tags']).toEqual(expect.arrayContaining([["public"]]));
 
-          let secretDecision = _.find(response.body, {code: 'TOP_SECRET'});
+          let secretDecision = _.find(response.body, {name: 'Confidential Decision'});
           expect(secretDecision).toHaveProperty('_id');
           expect(secretDecision.description).toBe('No comment');
           expect(secretDecision['tags']).toEqual(expect.arrayContaining([["sysadmin"]]));
@@ -145,7 +145,7 @@ describe('GET /decision', () => {
 describe('GET /decision/{id}', () => {
   test('returns a single Decision ', done => {
     setupDecisions(decisionsData).then((documents) => {
-      Decision.findOne({code: 'SPECIAL'}).exec(function(error, decision) {
+      Decision.findOne({name: 'Special Decision'}).exec(function(error, decision) {
         let decisionId = decision._id.toString();
         let uri = '/api/decision/' + decisionId;
 
@@ -158,7 +158,7 @@ describe('GET /decision/{id}', () => {
             expect(responseObject).toMatchObject({
               '_id': decisionId,
               'tags': expect.arrayContaining([['public'], ['sysadmin']]),
-              'code': 'SPECIAL'
+              'name': 'Special Decision'
             });
             done();
           });
@@ -175,12 +175,12 @@ describe('GET /public/decision', () => {
         .then(response => {
           expect(response.body.length).toEqual(2);
 
-          let firstDecision = _.find(response.body, {code: 'SPECIAL'});
+          let firstDecision = _.find(response.body, {name: 'Special Decision'});
           expect(firstDecision).toHaveProperty('_id');
           expect(firstDecision.description).toBe('We have decided to save the environment');
           expect(firstDecision['tags']).toEqual(expect.arrayContaining([["public"], ["sysadmin"]]));
 
-          let secondDecision = _.find(response.body, {code: 'VANILLA'});
+          let secondDecision = _.find(response.body, {name: 'Vanilla Ice Cream'});
           expect(secondDecision).toHaveProperty('_id');
           expect(secondDecision.description).toBe('Ice cream store will be built');
           expect(secondDecision['tags']).toEqual(expect.arrayContaining([["public"]]));
@@ -230,7 +230,7 @@ describe('GET /public/decision', () => {
 describe('GET /public/decision/{id}', () => {
   test('returns a single public decision ', done => {
     setupDecisions(decisionsData).then((documents) => {
-      Decision.findOne({code: 'SPECIAL'}).exec(function(error, decision) {
+      Decision.findOne({name: 'Special Decision'}).exec(function(error, decision) {
         if (error) {
           console.log(error);
           throw error
@@ -247,7 +247,7 @@ describe('GET /public/decision/{id}', () => {
             expect(responseObj).toMatchObject({
               '_id': specialDecisionId,
               'tags': expect.arrayContaining([['public'], ['sysadmin']]),
-              code: 'SPECIAL'
+              name: 'Special Decision'
             });
             done();
           });
@@ -302,7 +302,7 @@ describe('PUT /decision/:id', () => {
   let existingDecision;
   beforeEach(() => {
     existingDecision = new Decision({
-      code: 'SOME_DECISION',
+      name: 'SOME_DECISION',
       description: 'The decision has been approved.'
     });
     return existingDecision.save();
@@ -336,7 +336,7 @@ describe('PUT /decision/:id', () => {
 
   test('does not allow updating tags', done => {
     let existingDecision = new Decision({
-      code: 'EXISTING',
+      name: 'EXISTING',
       tags: [['sysadmin']]
     });
     let updateData = {
@@ -361,7 +361,7 @@ describe('PUT /decision/:id', () => {
 describe('PUT /decision/:id/publish', () => {
   test('publishes a decision', done => {
     let existingDecision = new Decision({
-      code: 'EXISTING',
+      name: 'EXISTING',
       description: 'I love this project',
       tags: []
     });
@@ -371,7 +371,7 @@ describe('PUT /decision/:id/publish', () => {
         .expect(200)
         .send({})
         .then(response => {
-          Decision.findOne({code: 'EXISTING'}).exec(function(error, updatedDecision) {
+          Decision.findOne({name: 'EXISTING'}).exec(function(error, updatedDecision) {
             expect(updatedDecision).toBeDefined();
             expect(updatedDecision.tags[0]).toEqual(expect.arrayContaining(['public']));
             done();
@@ -394,7 +394,7 @@ describe('PUT /decision/:id/publish', () => {
 describe('PUT /decision/:id/unpublish', () => {
   test('unpublishes a decision', done => {
     let existingDecision = new Decision({
-      code: 'EXISTING',
+      name: 'EXISTING',
       description: 'I love this project',
       tags: [['public']]
     });
@@ -404,7 +404,7 @@ describe('PUT /decision/:id/unpublish', () => {
         .expect(200)
         .send({})
         .then(response => {
-          Decision.findOne({code: 'EXISTING'}).exec(function(error, updatedDecision) {
+          Decision.findOne({name: 'EXISTING'}).exec(function(error, updatedDecision) {
             expect(updatedDecision).toBeDefined();
             expect(updatedDecision.tags[0]).toEqual(expect.arrayContaining([]));
             done();
@@ -427,14 +427,14 @@ describe('PUT /decision/:id/unpublish', () => {
 describe('DELETE /decision/id', () => {
   test('It soft deletes a decision', done => {
     setupDecisions(decisionsData).then((documents) => {
-      Decision.findOne({code: 'VANILLA'}).exec(function(error, decision) {
+      Decision.findOne({name: 'Vanilla Ice Cream'}).exec(function(error, decision) {
         let vanillaDecisionId = decision._id.toString();
         let uri = '/api/decision/' + vanillaDecisionId;
         request(app)
           .delete(uri)
           .expect(200)
           .then(response => {
-            Decision.findOne({code: 'VANILLA'}).exec(function(error, decision) {
+            Decision.findOne({name: 'Vanilla Ice Cream'}).exec(function(error, decision) {
               expect(decision.isDeleted).toBe(true);
               done();
             });

@@ -5,7 +5,6 @@ const documentFactory = require('./factories/document_factory').factory;
 const commentFactory = require('./factories/comment_factory').factory;
 const applicationFactory = require('./factories/application_factory').factory;
 const decisionFactory = require('./factories/decision_factory').factory;
-const userFactory = require('./factories/user_factory').factory;
 const request = require('supertest');
 const shell = require('shelljs');
 
@@ -14,9 +13,10 @@ const _ = require('lodash');
 const documentController = require('../controllers/document.js');
 require('../helpers/models/document');
 
-var Document = mongoose.model('Document');
+const Document = mongoose.model('Document');
 
 const fieldNames = ['displayName', 'documentFileName'];
+const idirUsername = 'idir/i_am_a_bot';
 
 function paramsWithDocId(req) {
   let params = test_helper.buildParams({'docId': req.params.id});
@@ -43,7 +43,7 @@ app.get('/api/document/:id/download', function(req, res) {
 
 app.post('/api/document', function(req, res) {
   let extraFields = test_helper.buildParams(req.body);
-  let params = test_helper.createSwaggerParams(fieldNames, extraFields, userID);
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields, idirUsername);
 
   return documentController.protectedPost(params, res);
 });
@@ -51,7 +51,7 @@ app.post('/api/document', function(req, res) {
 app.put('/api/document/:id', function(req, res) {
   let extraFields = test_helper.buildParams(req.body);
   _.merge(extraFields, {'docId': { 'value': req.params.id}});
-  let params = test_helper.createSwaggerParams(fieldNames, extraFields, userID);
+  let params = test_helper.createSwaggerParams(fieldNames, extraFields, idirUsername);
   return documentController.protectedPut(params, res);
 });
 
@@ -70,7 +70,7 @@ app.get('/api/public/document/:id/download', function(req, res) {
 
 app.post('/api/public/document', function(req, res) {
   let extraFields = test_helper.buildParams(req.body);
-  let params = test_helper.createPublicSwaggerParams(fieldNames, extraFields, userID);
+  let params = test_helper.createPublicSwaggerParams(fieldNames, extraFields, idirUsername);
 
   return documentController.unProtectedPost(params, res);
 });
@@ -104,24 +104,6 @@ function setupDocuments(documentsData) {
   });
 };
 
-var authUser;
-
-function setupUser() {
-  return new Promise(function(resolve, reject) {
-    if (_.isUndefined(authUser)) {
-      userFactory.create('user').then(user => {
-        authUser = user;
-        userID = user._id;
-        resolve();
-      }).catch(error => {
-        reject(error);
-      });
-    } else {
-      resolve();
-    }
-  });
-}
-
 function cleanupTestDocumentFiles() {
   if (shell.test('-d', './api/test/uploads/') && shell.test('-d', './api/test/uploads/*.txt')) {
     shell.rm('./api/test/uploads/*.txt');
@@ -132,7 +114,7 @@ afterAll(() => {
   cleanupTestDocumentFiles();
 });
 
-describe.only('GET /document', () => {
+describe('GET /document', () => {
   test('returns a list of non-deleted, public and sysadmin documents', done => {
     setupDocuments(documentsData).then((documents) => {
       request(app).get('/api/document')
@@ -428,16 +410,14 @@ describe('POST /document', () => {
     decisionId;
     
   beforeEach(done => {
-    setupUser().then(() => {
-      applicationFactory.create('application', {}).then(application => {
-        applicationId = application.id;
-        commentFactory.create('comment', {}).then(comment => {
-          commentId = comment.id;
-        }).then(() => {
-          decisionFactory.create('decision', {}).then(decision => {
-            decisionId = decision.id;
-            done();
-          });
+    applicationFactory.create('application', {}).then(application => {
+      applicationId = application.id;
+      commentFactory.create('comment', {}).then(comment => {
+        commentId = comment.id;
+      }).then(() => {
+        decisionFactory.create('decision', {}).then(decision => {
+          decisionId = decision.id;
+          done();
         });
       });
     });
@@ -518,7 +498,7 @@ describe('POST /document', () => {
         Document.findById(response.body.id).exec(function(error, document) {
           expect(document).not.toBeNull();
           expect(document._addedBy).not.toBeNull();
-          expect(document._addedBy).toEqual(userID);
+          expect(document._addedBy).toEqual(idirUsername);
           done();
         });
       });
@@ -537,16 +517,14 @@ describe.skip('PUT /document/{:id}', () => {
     decisionId;
     
   beforeEach(done => {
-    setupUser().then(() => {
-      applicationFactory.create('application', {}).then(application => {
-        applicationId = application.id;
-        commentFactory.create('comment', {}).then(comment => {
-          commentId = comment.id;
-        }).then(() => {
-          decisionFactory.create('decision', {}).then(decision => {
-            decisionId = decision.id;
-            done();
-          });
+    applicationFactory.create('application', {}).then(application => {
+      applicationId = application.id;
+      commentFactory.create('comment', {}).then(comment => {
+        commentId = comment.id;
+      }).then(() => {
+        decisionFactory.create('decision', {}).then(decision => {
+          decisionId = decision.id;
+          done();
         });
       });
     });
