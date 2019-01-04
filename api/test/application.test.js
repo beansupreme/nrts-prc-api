@@ -258,7 +258,26 @@ describe('POST /application', () => {
         lastName: 'Pai'
       }
     ],
-    parcels: [],
+    parcels: [
+      {
+        type: 'Feature',
+        properties: {
+          TENURE_LEGAL_DESCRIPTION: 'READ THESE BORING LEGAL TERMS.',
+          TENURE_AREA_IN_HECTARES: 3.333,
+          INTRID_SID: 12345,
+          TENURE_EXPIRY: 1527878179000,
+          FEATURE_CODE: 'FL98000100',
+          FEATURE_AREA_SQM: 33855.6279054274,
+          FEATURE_LENGTH_M: 740.122691165678
+        },
+        crs: {
+          properties: {
+            name: 'urn:ogc:def:crs:EPSG::4326'
+          }
+        }
+      }
+      
+    ],
     areaHectares: 80000,
     centroid: [ -128.6704671493984, 58.28816863259513 ],
     TENURE_PURPOSE: 'To rule the world',
@@ -405,21 +424,60 @@ describe('POST /application', () => {
         });
       });
 
-      test.skip('saves features on the application', done => {
+      test('saves features on the application', done => {
         request(app).post('/api/application')
           .send(applicationObj)
           .expect(200).then(response => {
             expect(response.body).toHaveProperty('_id');
             Feature.findOne({applicationID: response.body['_id']}).exec(function(error, feature) {
               expect(feature).not.toBeNull();
-              expect(feature.INTRID_SID).not.toBeNull();
+              console.log(feature);
+              let featureProperties = feature.properties;
+              expect(featureProperties).toBeDefined();
+              expect(featureProperties.INTRID_SID).toEqual(12345);
+              expect(featureProperties.TENURE_EXPIRY).toEqual('1527878179000');
+              expect(featureProperties.TENURE_LEGAL_DESCRIPTION).toEqual('READ THESE BORING LEGAL TERMS.');
+              
               done();
             });
           });
       });
 
-      test.skip('strips unwanted attributes', done => {
-        
+      test('strips unwanted attributes', done => {
+        let objectWithForbiddenAttrs = {
+          name: 'Evil plan',
+          description: 'Plan to corrupt this database! ',
+          tantalisID: 987654,
+          areaHectares: 10000000,
+          centroid: [[58], [58]],
+          purpose: 'To hack this app',
+          status: 'Beginning',
+          tenureStage: 'My stage',
+          location: 'Detroit',
+          businessUnit: 'Strata',
+          cl_file: 88888888,
+          client: 'Dr Strangelove'
+        };
+
+        request(app).post('/api/application')
+        .send(objectWithForbiddenAttrs)
+        .expect(200).then(response => {
+          expect(response.body).toHaveProperty('_id');
+          Application.findOne({name: 'Evil plan'}).exec(function(error, application) {
+            expect(application).toBeDefined();
+
+            expect(application.areaHectares).not.toEqual(10000000);
+            expect(application.purpose).not.toEqual('To hack this app');
+            expect(application.status).not.toEqual('Beginning');
+            expect(application.tenureStage).not.toEqual('My stage');
+            expect(application.location).not.toEqual('Detroit');
+            expect(application.businessUnit).not.toEqual('Strata');
+            expect(application.cl_file).not.toEqual(88888888);
+            expect(application.client).not.toEqual('Dr Strangelove');
+
+            done();
+          });
+        });
       });
     });
   });

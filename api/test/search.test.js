@@ -59,7 +59,7 @@ describe('GET /api/search/ttlsapi/crownLandFileNumber/', () => {
   const secondResult = {DISPOSITION_TRANSACTION_SID: 222222};
   const dispSearchResult = {};
 
-  describe('when the login call returns successfully', () => {
+  describe('when the ttls api login call returns successfully', () => {
     let loginPromise = new Promise(function(resolve, reject) {
       resolve('ACCESS_TOKEN');
     });
@@ -118,7 +118,7 @@ describe('GET /api/search/ttlsapi/crownLandFileNumber/', () => {
 
   });
 
-  describe('when the login call fails', () => {
+  describe('when the ttls api login call fails', () => {
     let loginPromise = new Promise(function(resolve, reject) {
       reject({statusCode: 503, message: 'Ooh boy something went wrong'});
     });
@@ -144,7 +144,7 @@ describe('GET /api/search/ttlsapi/dispositionTransactionId/', () => {
     DISPOSITION_TRANSACTION_SID: 666666
   };
 
-  describe('when the login call returns successfully', () => {
+  describe('when the ttls api login call returns successfully', () => {
     let loginPromise = new Promise(function(resolve, reject) {
       resolve('ACCESS_TOKEN');
     });
@@ -172,7 +172,7 @@ describe('GET /api/search/ttlsapi/dispositionTransactionId/', () => {
     });
   });
 
-  describe('when the login call fails', () => {
+  describe('when the ttls api login call fails', () => {
     let loginPromise = new Promise(function(resolve, reject) {
       reject({statusCode: 503, message: 'Ooh boy something went wrong'});
     });
